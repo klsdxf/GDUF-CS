@@ -1,0 +1,58 @@
+{
+  "version": "1.1",
+  "date": "2026-11-08",
+  "timezone": "Asia/Shanghai",
+  "selected_variant": "广金主场 · 观赛优先",
+  "selection_status": "用户明确选择 GDUF 双方案第一个版本",
+  "original_source": "C:\\Users\\genev\\.codex\\visualizations\\2026\\11\\08\\01a1bbb4-d3a1-7443-a1aa-bfe16d370422\\gduf-cs2-designs.html",
+  "original_variant_count": 2,
+  "selected_variant_count": 1,
+  "extraction": "仅移除方案轮播外壳和未选第二方案 DOM；已选 section、style 和 script 保持原内容",
+  "themes": [
+    "light",
+    "dark"
+  ],
+  "breakpoints_css_px": [
+    760,
+    540
+  ],
+  "reference_content_widths_css_px": [
+    1024,
+    760,
+    540,
+    390,
+    320
+  ],
+  "files": {
+    "gduf-cs2-designs.original.fragment.html": {
+      "sha256": "25224c12de15405deff24acbe4c690d071de5cd51a4e5799d044583b0b55170b",
+      "bytes": 28288
+    },
+    "广金主场_观赛优先_选定稿.fragment.html": {
+      "sha256": "b2e256fa99ff6d39c2b3a691c55aa2c27a917c044f4d167dd66cc96419054559",
+      "bytes": 25233
+    },
+    "原稿样式基准.css": {
+      "sha256": "56654f87ba38e8c2903cab97b9f74e790dcb14b569626aa8943aa9aa78f926d2",
+      "bytes": 18822
+    },
+    "广金主场_观赛优先_预览.html": {
+      "sha256": "b9520fd3bea405fd56b23bbe6e22ad0bf595480dfbf6de3918d3182397021668",
+      "bytes": 111473
+    }
+  },
+  "verification_limits": [
+    "本包不含生产应用",
+    "本次未进行产品截图视觉验收",
+    "预览不连接后台，数据均为示意"
+  ],
+  "checks": {
+    "original_copy_sha256_verified": true,
+    "selected_section_unchanged": true,
+    "css_unchanged": true,
+    "script_unchanged": true,
+    "javascript_syntax": "passed",
+    "preview_export": "generated",
+    "browser_visual_test": "not_performed"
+  }
+}

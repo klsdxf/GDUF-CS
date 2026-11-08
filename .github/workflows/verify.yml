@@ -53,6 +53,18 @@ jobs:
           docker compose exec -T api python -c "from PIL import Image; Image.new('RGB',(16,16),'red').save('/app/storage/media/acceptance.webp','WEBP')"
           bash scripts/backup.sh backups/ci
           docker compose exec -T api sha256sum /app/storage/media/acceptance.webp | cut -d' ' -f1 > /tmp/source-image.sha
+      - name: Verify IP certificate bootstrap configuration
+        run: |
+          bash -n scripts/ip-https.sh
+          PUBLIC_ORIGIN=https://203.0.113.10 bash scripts/ip-https.sh prepare 203.0.113.10
+          test "$(curl --fail http://127.0.0.1/.well-known/acme-challenge/gduf-check)" = gduf-acme-ready
+      - name: Verify IP HTTPS using an isolated test certificate
+        run: |
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=203.0.113.10 -addext subjectAltName=IP:203.0.113.10 -keyout /tmp/ip-test.key -out /tmp/ip-test.crt
+          docker run --rm -i -v gduf_ci_source_ip_certificates:/certs nginx:1.27-alpine sh -c 'mkdir -p /certs/live/gduf-ip; cat > /certs/live/gduf-ip/fullchain.pem' < /tmp/ip-test.crt
+          docker run --rm -i -v gduf_ci_source_ip_certificates:/certs nginx:1.27-alpine sh -c 'cat > /certs/live/gduf-ip/privkey.pem' < /tmp/ip-test.key
+          PUBLIC_ORIGIN=https://203.0.113.10 bash scripts/ip-https.sh enable 203.0.113.10
+          curl --fail --retry 5 --retry-connrefused --noproxy '*' --cacert /tmp/ip-test.crt --connect-to 203.0.113.10:443:127.0.0.1:443 https://203.0.113.10/api/v1/health
       - name: Restore backup to separate empty deployment
         env:
           COMPOSE_PROJECT_NAME: gduf_ci_restore
@@ -67,5 +79,5 @@ jobs:
       - name: Stop isolated CI deployments
         if: always()
         run: |
-          docker compose down
+          docker compose -f compose.yaml -f deploy/compose.ip.yaml down
           COMPOSE_PROJECT_NAME=gduf_ci_restore docker compose down

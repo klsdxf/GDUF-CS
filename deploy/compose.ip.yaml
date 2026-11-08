@@ -1,0 +1,27 @@
+services:
+  edge:
+    image: nginx:1.27-alpine
+    ports: ['80:80', '443:443']
+    volumes:
+      - ./storage/ip-edge:/etc/nginx/conf.d:ro,z
+      - ip_acme:/var/www/acme
+      - ip_certificates:/etc/letsencrypt:ro
+    depends_on:
+      web: {condition: service_started}
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}
+  certbot:
+    image: certbot/certbot:latest
+    profiles: [certificate]
+    volumes:
+      - ip_acme:/var/www/acme
+      - ip_certificates:/etc/letsencrypt
+      - ip_certbot_work:/var/lib/letsencrypt
+      - ip_certbot_logs:/var/log/letsencrypt
+volumes:
+  ip_acme:
+  ip_certificates:
+  ip_certbot_work:
+  ip_certbot_logs:

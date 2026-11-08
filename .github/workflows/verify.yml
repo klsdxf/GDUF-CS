@@ -33,3 +33,39 @@ jobs:
       - uses: actions/setup-node@v4
         with: {node-version: '22', cache: npm, cache-dependency-path: frontend/package-lock.json}
       - run: cd frontend && npm ci && npm run build && npm audit --audit-level=moderate
+  deployment:
+    runs-on: ubuntu-latest
+    env:
+      DB_PASSWORD: ci-only-safe-password
+      PUBLIC_ORIGIN: https://ci.invalid
+      COMPOSE_PROJECT_NAME: gduf_ci_source
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and start complete deployment
+        run: docker compose up -d --build --wait
+      - name: Verify same-domain API SPA routing and private endpoints
+        run: |
+          curl --fail http://127.0.0.1:8080/api/v1/health
+          curl --fail http://127.0.0.1:8080/competitions/history/schedule | grep 'id="app"'
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/api/v1/admin/competitions)" = 401
+      - name: Back up database and image volume
+        run: |
+          docker compose exec -T api python -c "from PIL import Image; Image.new('RGB',(16,16),'red').save('/app/storage/media/acceptance.webp','WEBP')"
+          bash scripts/backup.sh backups/ci
+          docker compose exec -T api sha256sum /app/storage/media/acceptance.webp | cut -d' ' -f1 > /tmp/source-image.sha
+      - name: Restore backup to separate empty deployment
+        env:
+          COMPOSE_PROJECT_NAME: gduf_ci_restore
+        run: |
+          docker compose up -d db --wait
+          bash scripts/restore.sh backups/ci EMPTY_DATABASE_ONLY
+          docker compose run --rm -T --no-deps api sha256sum /app/storage/media/acceptance.webp | cut -d' ' -f1 > /tmp/restored-image.sha
+          diff /tmp/source-image.sha /tmp/restored-image.sha
+      - name: Deployment logs
+        if: failure()
+        run: docker compose logs --tail=100
+      - name: Stop isolated CI deployments
+        if: always()
+        run: |
+          docker compose down
+          COMPOSE_PROJECT_NAME=gduf_ci_restore docker compose down

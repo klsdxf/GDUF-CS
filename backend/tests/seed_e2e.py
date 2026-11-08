@@ -17,6 +17,7 @@ with TestClient(app) as client:
     response=client.post('/api/v1/admin/auth/login',json={'username':'test-admin','password':os.environ['E2E_PASSWORD']})
     client.headers['x-csrf-token']=response.json()['data']['csrf']
     c,ids,s=setup_competition(client,16,'group_single',{'best_of':1,'groups':4,'qualify':2})
+    call(client,'/admin/competitions/'+c['id'],'patch',{'is_default':True})
     ms=call(client,'/admin/competitions/'+c['id']+'/matches')
     for i,m in enumerate(ms):
         if m['a'] and m['b']:call(client,'/admin/matches/'+m['id'],'patch',{'scheduled_at':(now()+timedelta(hours=i*2)).isoformat(),'status':'scheduled'})

@@ -82,7 +82,14 @@ def bracket(key:str,db:Session=Depends(db_session)):
     if not s or s.status!='published':fail('NOT_FOUND','阶段尚未公布',404)
     public_c(db,s.competition_id)
     ms=list(db.scalars(select(Match).where(Match.stage_id==key)))
-    return {'data':{'matches':[match_dto(db,m) for m in ms],'edges':[serialize(e) for e in db.scalars(select(Advancement).where(Advancement.source.in_([m.id for m in ms])))]}}
+    byes=[]
+    for m in ms:
+        if m.round>1 and not m.group:
+            for slot in ('a','b'):
+                team=getattr(m,slot);source=getattr(m,'source_'+slot)
+                if (team and not source) or source.startswith('group:'):
+                    byes.append({'name':db.get(Registration,team).name if team else None,'source':source})
+    return {'data':{'matches':[match_dto(db,m) for m in ms],'edges':[serialize(e) for e in db.scalars(select(Advancement).where(Advancement.source.in_([m.id for m in ms])))],'bye_sources':byes}}
 
 @router.get('/competitions/{key}/announcements')
 def announcements(key:str,db:Session=Depends(db_session)):

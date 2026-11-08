@@ -130,12 +130,16 @@ def create_competition(payload: CompetitionCreate, db: Session = Depends(db_sess
 @router.patch('/competitions/{key}')
 def edit_competition(key: str, payload: dict, db: Session = Depends(db_session)):
     c = competition(db, key, True)
+    if payload.get('status',c.status) not in ('draft','roster_preparation','scheduling','ongoing','completed','archived'):fail('STATUS','无效赛事状态')
+    if c.published and payload.get('status')=='draft':fail('STATUS','已发布赛事不能退回草稿；结束后可归档',409)
+    if payload.get('team_limit',c.team_limit) not in range(2,33):fail('TEAM_LIMIT','队伍上限须在2至32之间')
     for k in ('name','season','organizer','description','rules','map_pool','team_limit','config','focus_match_id','status'):
         if k in payload:
             setattr(c,k,payload[k])
     if payload.get('is_default'):
         for other in db.scalars(select(Competition)):
             other.is_default = other.id == c.id
+    elif 'is_default' in payload:c.is_default=False
     audit(db, 'competition.edit', c.id, payload)
     return {'data': serialize(c)}
 
@@ -245,10 +249,16 @@ async def preview_import(key: str, file: UploadFile=File(...), mode: str=Form('c
     teams,errors=parse_excel(raw)
     errors+=validate_roster(db,c,teams,mode)
     differences=[]
+    summary={'new':0,'modified':0,'unchanged':0}
     for t in teams:
         old=db.scalar(select(Registration).where(Registration.competition_id==c.id,Registration.code==t['code']))
-        differences.append({'code':t['code'],'before':private_team(db,old) if old else None,'after':t})
-    batch=ImportBatch(competition_id=c.id,revision=c.revision,mode=mode,filename=file.filename,file_hash=hashlib.sha256(raw).hexdigest(),payload={'teams':teams,'errors':errors,'differences':differences,'team_count':len(teams),'member_count':sum(len(t['members']) for t in teams)},expires_at=now()+timedelta(minutes=30))
+        before=private_team(db,old) if old else None
+        def comparable(value):
+            return {**{k:value.get(k,'') for k in ('code','name','description','contact')},'members':sorted([{k:m[k] for k in ('nickname','steam_id','role','captain')} for m in value['members']],key=lambda m:m['steam_id'])}
+        change='new' if before is None else 'unchanged' if comparable(before)==comparable(t) else 'modified'
+        summary[change]+=1
+        differences.append({'code':t['code'],'change':change,'before':before,'after':t,'removed_members':[m for m in before['members'] if m['steam_id'] not in {n['steam_id'] for n in t['members']}] if before else []})
+    batch=ImportBatch(competition_id=c.id,revision=c.revision,mode=mode,filename=file.filename,file_hash=hashlib.sha256(raw).hexdigest(),payload={'teams':teams,'errors':errors,'differences':differences,'summary':summary,'team_count':len(teams),'member_count':sum(len(t['members']) for t in teams)},expires_at=now()+timedelta(minutes=30))
     db.add(batch); db.flush()
     return {'data':serialize(batch)}
 

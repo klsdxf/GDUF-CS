@@ -60,7 +60,7 @@ server {
 
 ## 备份、恢复与升级
 
-每日 `bash scripts/backup.sh`，失败退出码接入实际监控；保留最近7份及关键节点备份，至少一份异地保存。包含数据库、图片和非秘密配置；实际 `.env` 密钥独立受控保存。恢复只向独立空库执行 `bash scripts/restore.sh backups/时间 EMPTY_DATABASE_ONLY`，对照计数与图片后再切换流量。脚本不会清空现有数据库。
+每日 `bash scripts/backup.sh`，失败退出码接入实际监控；保留最近7份及关键节点备份，至少一份异地保存。包含数据库、图片和非秘密配置；实际 `.env` 密钥独立受控保存。恢复时先在独立部署目录构建镜像，仅启动 `docker compose up -d db`（不要先执行迁移）；只向独立空库执行 `bash scripts/restore.sh backups/时间 EMPTY_DATABASE_ONLY`，对照计数与图片后再 `docker compose up -d` 并切换流量。脚本不会清空现有数据库。
 
 升级前备份，`docker compose build` 后让迁移单次运行成功，再更新 API 和静态前端。保留旧镜像；不兼容迁移不能只回滚镜像，需使用经验证的数据库恢复流程。
 

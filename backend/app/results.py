@@ -159,6 +159,9 @@ def resolve_ranking(key:str,payload:dict,db:Session=Depends(db_session)):
     group=payload.get('group','');ranks=payload.get('teams',[])
     current=standings(db,s,group)
     if len(set(ranks))!=len(ranks) or set(ranks)!={r['team_id'] for r in current}:fail('RANKING','必须包含该组全部队伍且不重复')
+    by_id={r['team_id']:r for r in current}
+    keys=[tuple(by_id[t][k] for k in ('points','head','map_diff','round_diff')) for t in ranks]
+    if keys!=sorted(keys,reverse=True):fail('RANKING','只能对同分规则仍无法区分的队伍裁定，不能重排已确定名次')
     s.config={**s.config,'ranking_resolution':{**s.config.get('ranking_resolution',{}),group:ranks}}
     audit(db,'ranking.resolve',key,payload)
     return {'data':standings(db,s)}

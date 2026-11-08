@@ -11,4 +11,5 @@ test-results/
 playwright-report/
 frontend/diagnostic-results/
 frontend/visual-results/
+frontend/workflow-results/
 load-report.json

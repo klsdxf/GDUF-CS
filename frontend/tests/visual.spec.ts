@@ -8,7 +8,7 @@ test('compare Vue reference against immutable source in same browser',async({bro
   const context=await browser.newContext({viewport:{width,height:1200},colorScheme})
   const actual=await context.newPage();await actual.goto('http://localhost:5173/__design-reference');await expect(actual.locator('.g-button svg')).toBeVisible()
   const icon=await actual.locator('.g-button svg').evaluate(e=>e.outerHTML)
-  const expected=await context.newPage();await expected.setContent('<!doctype html><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+source.replace('<i data-lucide="arrow-down-right" aria-hidden="true"></i>',icon));await expected.evaluate(()=>document.fonts.ready)
+  const expected=await context.newPage();await expected.setContent('<!doctype html><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+source.replace('<i data-lucide="arrow-down-right" aria-hidden="true"></i>',icon));await expected.evaluate(()=>document.fonts.ready);await expected.addStyleTag({content:'body{background:#fff}'})
   const a=await actual.locator('.g-site').screenshot({path:`test-results/actual-${width}-${colorScheme}.png`})
   const b=await expected.locator('.g-site').screenshot({path:`test-results/baseline-${width}-${colorScheme}.png`})
   const python=process.env.PYTHON||(process.platform==='win32'?'../.venv/Scripts/python.exe':'python')

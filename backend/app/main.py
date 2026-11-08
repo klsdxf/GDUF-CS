@@ -76,6 +76,16 @@ def logout(response: Response, session=Depends(authenticated), db: Session = Dep
     response.delete_cookie('session')
     return {'data': True}
 
+from . import roster, tournaments, results, public, content
+for module in (roster, tournaments, results, public, content):
+    app.include_router(module.router)
+
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
+media = Path(os.getenv('MEDIA_DIR', 'storage/media'))
+media.mkdir(parents=True, exist_ok=True)
+app.mount('/media', StaticFiles(directory=str(media)), name='media')
+
 @app.put('/api/v1/admin/auth/password')
 def password(payload: dict, session=Depends(authenticated), db: Session = Depends(db_session)):
     admin = db.get(Admin, 1)

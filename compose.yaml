@@ -1,0 +1,48 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: gduf
+      POSTGRES_USER: gduf
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}
+    volumes: [database:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U gduf]
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+    logging: &logs
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}
+  migrate:
+    build: ./backend
+    environment: &api_env
+      DATABASE_URL: postgresql+psycopg://gduf:${DB_PASSWORD}@db/gduf
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?set PUBLIC_ORIGIN}
+      ENV: production
+      MEDIA_DIR: /app/storage/media
+    command: [alembic, upgrade, head]
+    depends_on:
+      db: {condition: service_healthy}
+  api:
+    build: ./backend
+    environment: *api_env
+    volumes: [media:/app/storage/media]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
+      interval: 30s
+      retries: 3
+    restart: unless-stopped
+    logging: *logs
+  web:
+    build: ./frontend
+    ports: ['127.0.0.1:8080:80']
+    depends_on:
+      api: {condition: service_healthy}
+    restart: unless-stopped
+    logging: *logs
+volumes:
+  database:
+  media:

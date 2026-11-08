@@ -1,0 +1,28 @@
+<script setup lang="ts">
+import {ref,computed} from 'vue'
+import {ArrowDownRight} from 'lucide-vue-next'
+const props=defineProps<{home:any}>()
+const day=ref('')
+const base=computed(()=>'/competitions/'+props.home.competition.slug)
+const dates=computed(()=>[...new Set<string>(props.home.matches.filter((m:any)=>m.scheduled_at).map((m:any)=>new Date(m.scheduled_at).toLocaleDateString('sv-SE',{timeZone:'Asia/Shanghai'})))].sort())
+const selected=computed(()=>day.value||dates.value[0]||'')
+const fixtures=computed(()=>props.home.matches.filter((m:any)=>selected.value==='results'?m.confirmed:m.scheduled_at&&new Date(m.scheduled_at).toLocaleDateString('sv-SE',{timeZone:'Asia/Shanghai'})===selected.value))
+const f=computed(()=>props.home.focus)
+const ranks=computed(()=>{const all=props.home.standings;return all.filter((r:any)=>r.group===all[0]?.group).slice(0,4)})
+const state:Record<string,string>={unscheduled:'待安排',scheduled:'待开始',ongoing:'比赛进行中',completed:'已结束',postponed:'已延期',cancelled:'已取消'}
+const cstate:Record<string,string>={roster_preparation:'名单整理中',scheduling:'赛程准备中',ongoing:'进行中',completed:'已结束',archived:'已归档'}
+function jump(){document.querySelector('.g-schedule')?.scrollIntoView({block:'center'});(document.querySelector('.g-date-tabs button') as HTMLElement)?.focus({preventScroll:true})}
+function time(value:string){return new Date(value).toLocaleTimeString('zh-CN',{timeZone:'Asia/Shanghai',hour:'2-digit',minute:'2-digit'})}
+</script>
+<template>
+      <div class="g-mast"><div class="g-mast-copy"><p class="g-eyebrow"><span class="g-dot"></span>{{home.competition.name}}</p><h1>广金主场。<br><em>为这一局集结。</em></h1><div class="g-mast-lower"><p>从校园五排，到全场焦点。<br>属于广金玩家的每一轮，都值得被看见。</p><button class="g-button g-primary" type="button" @click="jump">查看比赛日 <ArrowDownRight aria-hidden="true" /></button></div></div><div class="g-identity-art" aria-hidden="true"><span class="g-art-top">GUANGDONG UNIVERSITY OF FINANCE</span><div class="g-petalmark"><span></span><span></span><span></span><span></span><span></span></div><strong>GD<br>UF<span>↗</span></strong><span class="g-art-bottom">OUR CAMPUS.<br>OUR GAME.</span><div class="g-art-cross">+</div></div></div>
+<div class="g-strip"><span><b>{{home.team_count}}</b> 支队伍</span><span>{{cstate[home.competition.status]||'赛事准备中'}}</span><span class="g-motto">明德 · 敏学 · 笃行 · 致远</span></div>
+<div class="g-match-grid"><section class="g-feature"><div class="g-section-top"><h2>焦点对决 <small>FEATURED MATCH</small></h2><span class="g-status"><span class="g-dot"></span>{{f?state[f.status]:'赛程待公布'}}</span></div>
+<template v-if="f"><div class="g-duel"><div class="g-team"><RouterLink v-if="f.teams[0]" :to="base+'/teams/'+f.teams[0].id"><img v-if="f.teams[0].logo" class="g-teammark" :src="f.teams[0].logo" alt="队标"><span v-else class="g-teammark">{{f.teams[0].name.slice(0,1)}}<span>{{f.teams[0].name.slice(1,2)}}</span></span><h3>{{f.teams[0].name}}</h3><p>{{f.teams[0].code}}</p></RouterLink><h3 v-else>{{f.source_a||'轮空晋级'}}</h3></div>
+<div class="g-score"><p>{{f.group?f.group+' 组 / ':''}}BO{{f.best_of}}</p><strong>{{f.confirmed?f.result.wins_a:'–'}} <span>:</span> {{f.confirmed?f.result.wins_b:'–'}}</strong><span>{{f.result.result_type==='forfeit'?'弃权':f.result.result_type==='technical'?'技术判负':'系列赛比分'}}</span></div>
+<div class="g-team"><RouterLink v-if="f.teams[1]" :to="base+'/teams/'+f.teams[1].id"><img v-if="f.teams[1].logo" class="g-teammark g-alt" :src="f.teams[1].logo" alt="队标"><span v-else class="g-teammark g-alt">{{f.teams[1].name.slice(0,1)}}<span>{{f.teams[1].name.slice(1,2)}}</span></span><h3>{{f.teams[1].name}}</h3><p>{{f.teams[1].code}}</p></RouterLink><h3 v-else>{{f.source_b||'轮空晋级'}}</h3></div></div>
+<div class="g-maps"><span v-for="(map,i) in f.result.maps||[]" :key="i">{{map.map_name}} <b>{{map.score_a}} : {{map.score_b}}</b></span><span v-if="!f.confirmed" class="g-decider">地图 <b>等待录分</b></span></div>
+<div class="g-feature-foot"><span>比分由赛事管理员更新</span><RouterLink class="g-textlink" :to="'/matches/'+f.id">比赛详情 ↗</RouterLink></div></template><p v-else class="empty">赛程待公布</p></section>
+<aside class="g-standings"><div class="g-section-top"><h2>小组积分 <small>{{ranks[0]?.group?'GROUP '+ranks[0].group:'STANDINGS'}}</small></h2></div><div class="g-rank-row g-rank-head"><span>队伍</span><span>胜 / 负</span><span>积分</span></div><div v-for="r in ranks" class="g-rank-row"><span><b>{{String(r.rank).padStart(2,'0')}}</b> {{r.name}}</span><span>{{r.wins}} / {{r.losses}}</span><strong>{{r.points}}</strong></div><p v-if="!ranks.length" class="empty">积分待公布</p><p class="g-rank-note"><RouterLink :to="base+'/standings'">完整积分与晋级说明 ↗</RouterLink></p></aside></div>
+<section class="g-schedule" aria-label="比赛日安排"><div class="g-section-top"><h2>比赛日 <small>MATCHDAY</small></h2><div class="g-date-tabs" role="group" aria-label="赛程日期"><button v-for="date in dates" type="button" :aria-pressed="selected===date" @click="day=date">{{date.slice(5).replace('-','.')}}</button><button type="button" :aria-pressed="selected==='results'" @click="day='results'">赛果</button></div></div><div class="g-schedule-rows" aria-live="polite"><RouterLink v-for="m in fixtures" class="g-fixture" :to="'/matches/'+m.id"><time>{{m.confirmed?'已结束':m.scheduled_at?time(m.scheduled_at):'待安排'}}</time><div class="g-fixture-pair"><span>{{m.teams[0]?.name||m.source_a||'轮空晋级'}}</span><em>{{m.confirmed?m.result.wins_a+' : '+m.result.wins_b:'VS'}}</em><span>{{m.teams[1]?.name||m.source_b||'轮空晋级'}}</span></div><span class="g-fixture-meta">{{m.group?m.group+'组 · ':''}}BO{{m.best_of}} · {{state[m.status]}}</span></RouterLink><p v-if="!fixtures.length" class="empty">当前日期无比赛</p></div></section>
+</template>

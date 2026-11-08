@@ -1,0 +1,35 @@
+name: Verify platform
+on: [push, pull_request]
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: {POSTGRES_PASSWORD: test-only, POSTGRES_DB: gduf_test}
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install -r backend/requirements.lock
+      - run: cd backend && alembic upgrade head && pytest -q
+        env:
+          DATABASE_URL: postgresql+psycopg://postgres:test-only@localhost/gduf_test
+          TEST_DATABASE_URL: postgresql+psycopg://postgres:test-only@localhost/gduf_test
+      - name: Verify PostgreSQL backup and restore into empty database
+        run: |
+          docker exec ${{ job.services.postgres.id }} pg_dump -U postgres -d gduf_test -Fc > /tmp/gduf.dump
+          docker exec ${{ job.services.postgres.id }} createdb -U postgres gduf_restore
+          docker exec -i ${{ job.services.postgres.id }} pg_restore -U postgres -d gduf_restore --exit-on-error < /tmp/gduf.dump
+          cd backend && python -m app.verify_restore
+        env:
+          DATABASE_URL: postgresql+psycopg://postgres:test-only@localhost/gduf_restore
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22', cache: npm, cache-dependency-path: frontend/package-lock.json}
+      - run: cd frontend && npm ci && npm run build && npm audit --audit-level=moderate

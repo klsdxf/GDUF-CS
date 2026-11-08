@@ -9,3 +9,6 @@ storage/
 backups/
 test-results/
 playwright-report/
+frontend/diagnostic-results/
+frontend/visual-results/
+load-report.json

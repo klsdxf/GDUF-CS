@@ -33,6 +33,9 @@ def calculate(m, payload, c):
 
 def downstream(db, m):
     found={};queue=[m.id]
+    if m.group:
+        for target in db.scalars(select(Match).where(Match.stage_id==m.stage_id,Match.group=='')):
+            found[target.id]=target
     while queue:
         for edge in db.scalars(select(Advancement).where(Advancement.source==queue.pop(0))):
             if edge.target not in found:
@@ -61,6 +64,7 @@ def match_locked(db,key):
 @router.put('/matches/{key}/result')
 def save_result(key:str,payload:dict,db:Session=Depends(db_session)):
     m,c=match_locked(db,key)
+    if m.status=='cancelled':fail('CANCELLED','已取消比赛不能录分')
     if m.confirmed:fail('CONFIRMED','已确认比赛请通过修正流程操作',409)
     if payload.get('expected_version')!=m.version:fail('VERSION','成绩已变化，请刷新',409)
     m.draft_result=calculate(m,payload,c);m.version+=1
@@ -101,9 +105,16 @@ def revise(key:str,payload:dict,db:Session=Depends(db_session)):
         incoming=list(db.scalars(select(Advancement).where(Advancement.target==target.id)))
         for edge in incoming:
             if edge.source==m.id or any(x.id==edge.source for x in affected):setattr(target,edge.slot,None)
+        if m.group:
+            for slot in ('a','b'):
+                if getattr(target,'source_'+slot).startswith('group:'):setattr(target,slot,None)
         target.result={};target.draft_result={};target.winner=None;target.confirmed=False;target.version+=1
         if target.bracket=='reset':target.status='unscheduled'
     m.result=result;m.winner=result['winner'];m.version+=1
+    if m.group:
+        stage=db.get(Stage,m.stage_id)
+        resolutions=dict(stage.config.get('ranking_resolution',{}));resolutions.pop(m.group,None)
+        stage.config={**stage.config,'ranking_resolution':resolutions}
     propagate(db,m)
     audit(db,'result.revise',key,{'before':before,'after':result,'reason':payload['reason'],'version':m.version})
     return {'data':serialize(m)}

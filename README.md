@@ -2,6 +2,8 @@
 
 广东金融学院学生社团 CS2 赛事展示与单管理员管理平台。Vue 3 + TypeScript + Element Plus / FastAPI + SQLAlchemy + Alembic / PostgreSQL / Nginx。开发依据见 [开发文档](开发文档/00_开发文档索引与决策记录.md)。
 
+当前线上环境、管理员交接、更新发布、证书续期和备份恢复见 [项目交接文档](项目交接文档.md)。正式入口为 <https://www.gdufcs.fun/>；实际服务器使用 Alibaba Cloud Linux 3，下文 Ubuntu 部署为通用方案。
+
 ## 本地运行
 
 Python 3.12、Node 22+。在仓库根目录执行：

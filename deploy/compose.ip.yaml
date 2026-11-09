@@ -3,6 +3,7 @@ services:
     image: nginx:1.27-alpine
     ports: ['80:80', '443:443']
     volumes:
+      - ./deploy/snippets:/etc/nginx/snippets:ro,z
       - ./storage/ip-edge:/etc/nginx/conf.d:ro,z
       - ip_acme:/var/www/acme
       - ip_certificates:/etc/letsencrypt:ro

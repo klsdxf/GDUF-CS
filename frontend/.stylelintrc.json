@@ -1,0 +1,7 @@
+{
+  "rules": {
+    "color-no-invalid-hex": true,
+    "declaration-property-value-no-unknown": true
+  },
+  "overrides": [{"files": ["**/*.vue"], "customSyntax": "postcss-html"}]
+}

@@ -2,13 +2,19 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 compose() { docker compose -f compose.yaml -f deploy/compose.ip.yaml "$@"; }
-operation="${1:?用法：bash scripts/domain-https.sh request|enable 完整域名}"
+operation="${1:?用法：bash scripts/domain-https.sh request|enable 完整域名 [跳转域名...]}"
 domain="${2:?请提供完整域名，例如 www.gdufcs.fun}"
 domain="${domain,,}"
 [[ "$domain" =~ ^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,63}$ ]] || { echo '请输入不带协议、端口和路径的完整域名'; exit 1; }
+redirect_hosts="${*:3}"
+domain_args=(--domain "$domain")
+for host in $redirect_hosts; do
+  [[ "$host" =~ ^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,63}$ && "$host" != "$domain" ]] || { echo '跳转域名无效或与规范域名相同'; exit 1; }
+  domain_args+=(--domain "$host")
+done
 case "$operation" in
   request)
-    compose run --rm --no-deps certbot certonly --webroot --webroot-path /var/www/acme --domain "$domain" --cert-name gduf-domain
+    compose run --rm --no-deps certbot certonly --webroot --webroot-path /var/www/acme "${domain_args[@]}" --expand --cert-name gduf-domain
     ;;
   enable)
     compose exec -T edge sh -c 'test -s /etc/letsencrypt/live/gduf-domain/fullchain.pem && test -s /etc/letsencrypt/live/gduf-domain/privkey.pem'
@@ -18,7 +24,12 @@ case "$operation" in
     mkdir "$backup"
     cp -p .env "$backup/environment"
     if [[ -f storage/ip-edge/domain.conf ]]; then cp storage/ip-edge/domain.conf "$backup/domain.conf"; fi
-    sed "s/__DOMAIN__/$domain/g" deploy/domain-https.conf > storage/ip-edge/domain.conf.next
+    # Both hosts must already serve the webroot challenge before request/enable.
+    redirect_server=""
+    if [[ -n "$redirect_hosts" ]]; then
+      redirect_server="server { listen 443 ssl; http2 on; server_name $redirect_hosts; ssl_certificate /etc/letsencrypt/live/gduf-domain/fullchain.pem; ssl_certificate_key /etc/letsencrypt/live/gduf-domain/privkey.pem; ssl_protocols TLSv1.2 TLSv1.3; include /etc/nginx/snippets/security-headers.conf; add_header Strict-Transport-Security \"max-age=86400\" always; return 301 https://$domain\$request_uri; }"
+    fi
+    sed -e "s/__DOMAIN__/$domain/g" -e "s/__REDIRECT_HOSTS__/$redirect_hosts/g" -e "s|__REDIRECT_SERVER__|$redirect_server|g" deploy/domain-https.conf > storage/ip-edge/domain.conf.next
     mv storage/ip-edge/domain.conf.next storage/ip-edge/domain.conf
     if ! compose exec -T edge nginx -t; then
       if [[ -f "$backup/domain.conf" ]]; then cp "$backup/domain.conf" storage/ip-edge/domain.conf; else rm -f storage/ip-edge/domain.conf; fi

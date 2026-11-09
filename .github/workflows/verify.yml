@@ -35,7 +35,7 @@ jobs:
       - run: cd frontend && npm ci && npm run build && npm audit --audit-level=moderate
       - run: cd frontend && VITE_PUBLIC_DATA_MODE=api npm run build
   frontend-e2e:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -65,8 +65,13 @@ jobs:
       - name: Verify same-domain API SPA routing and private endpoints
         run: |
           curl --fail http://127.0.0.1:8080/api/v1/health
-          curl --fail http://127.0.0.1:8080/competitions/history/schedule | grep 'id="app"'
+          curl --fail http://127.0.0.1:8080/competitions/autumn/schedule | grep 'id="app"'
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/api/v1/admin/competitions)" = 401
+          for path in /unknown /matches/missing /competitions/missing /missing.css; do
+            test "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8080$path")" = 404
+          done
+          curl -sI http://127.0.0.1:8080/assets/missing.js | grep -i 'X-Content-Type-Options: nosniff'
+          docker compose exec -T web nginx -V 2>&1 | grep -- --with-http_auth_request_module
       - name: Back up database and image volume
         run: |
           docker compose exec -T api python -c "from PIL import Image; Image.new('RGB',(16,16),'red').save('/app/storage/media/acceptance.webp','WEBP')"

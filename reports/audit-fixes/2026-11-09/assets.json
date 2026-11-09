@@ -1,0 +1,72 @@
+[
+  {
+    "file": "frontend/public/redesign/assets/barlow-500.woff2",
+    "bytes": 31748,
+    "sha256": "eee6f17304eaef18d249c92fd5ceb8246f7e6b04fdd114bf430519da076e504c"
+  },
+  {
+    "file": "frontend/public/redesign/assets/barlow-600.woff2",
+    "bytes": 32896,
+    "sha256": "d95306f039f3f0695623beeadae45fc5c63c492ed2ab4d0ba4838e94d57565ad"
+  },
+  {
+    "file": "frontend/public/redesign/assets/barlow-700.woff2",
+    "bytes": 33124,
+    "sha256": "53cbfa84d8a46871e00f1a818b0d3fd3bbfd9da1d91063522e42fb0fb1155a7d"
+  },
+  {
+    "file": "frontend/public/redesign/assets/barlow-800.woff2",
+    "bytes": 33096,
+    "sha256": "567e52f5789e31e15572cee13285a237f94345172321ea3b2f16088dfa38847e"
+  },
+  {
+    "file": "frontend/public/redesign/assets/barlow-900.woff2",
+    "bytes": 32580,
+    "sha256": "dc47d12e728608dc6a16ffcadac7979a64bcc053d20d0f417cd72918dfd8e60a"
+  },
+  {
+    "file": "frontend/public/redesign/assets/cs2-1-1440.webp",
+    "bytes": 113312,
+    "sha256": "af86e23917438f34a91a7250aabcbff65b1c3160514f9521c84ad6f8f748987d"
+  },
+  {
+    "file": "frontend/public/redesign/assets/cs2-1-480.webp",
+    "bytes": 22792,
+    "sha256": "81bd8ae163f2a9a8cd244c78270dd88291c6b18e67068ecf5edcab2362d52673"
+  },
+  {
+    "file": "frontend/public/redesign/assets/cs2-1-960.webp",
+    "bytes": 64840,
+    "sha256": "f93b47f2e31426759f631702343dd5b0ef0550bbfc80c39e40a7f599a4831a55"
+  },
+  {
+    "file": "frontend/public/redesign/assets/cs2-2-1440.webp",
+    "bytes": 143836,
+    "sha256": "ee1b74fce7ff4eeb6f521f95cdfd3297eaae282410e58a65fe5f92e2d0ef630b"
+  },
+  {
+    "file": "frontend/public/redesign/assets/cs2-2-480.webp",
+    "bytes": 25886,
+    "sha256": "8e9a762483209d7b9c448e9edc1b07dba970c652ddfb632a78d68598c000035d"
+  },
+  {
+    "file": "frontend/public/redesign/assets/cs2-2-960.webp",
+    "bytes": 81724,
+    "sha256": "28eb90a9615e5e96475c3386a3405227654d090a4416177529be24b71832b7e8"
+  },
+  {
+    "file": "frontend/public/redesign/assets/cs2-3-1440.webp",
+    "bytes": 69800,
+    "sha256": "6aa1e6e34b1643284930d44691d96443ce0791fb16cb897d1307790cb3607f70"
+  },
+  {
+    "file": "frontend/public/redesign/assets/cs2-3-480.webp",
+    "bytes": 14802,
+    "sha256": "60b94b8c45d57b4f91db9f2b0d2cacc94bb99e2775ed9313d44af4dfe3fd934a"
+  },
+  {
+    "file": "frontend/public/redesign/assets/cs2-3-960.webp",
+    "bytes": 38726,
+    "sha256": "f52cb58f5c15a72e42469a1e4ad4969bee7f0181c40775795d475829ad5176be"
+  }
+]

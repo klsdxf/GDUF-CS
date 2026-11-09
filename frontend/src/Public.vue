@@ -3,6 +3,8 @@ import {ref,computed,watch,nextTick,onUnmounted} from 'vue'
 import {useRoute,useRouter} from 'vue-router'
 import {renderDemo,demoDialog,demoAction} from './redesign/demo'
 import {loadPublic,renderApi,teamDetail,article,liveBody,base} from './redesign/data'
+import {api} from './api'
+import {classifyPublicRoute,notFound,updatePageMeta,resolveLiveAction,escape,responsiveImages} from './redesign/presentation'
 import Bracket from './Bracket.vue'
 import './redesign/reference.css'
 
@@ -13,32 +15,47 @@ const previousBackground=document.body.style.backgroundColor
 document.body.style.backgroundColor='#101216'
 const demo=mode==='demo',revision=ref(0),season=ref('all'),map=ref(0)
 const model=ref<any>({competitions:[],news:[]}),loading=ref(false),error=ref(''),dialog=ref<HTMLDialogElement>(),dialogTitle=ref(''),dialogBody=ref('')
+const liveMatchId=ref('')
+const missing=ref(false),liveState=ref('ready'),liveRows=ref<any[]>([])
+const liveCache=new Map<string,any[]>()
+const liveAction=computed(()=>resolveLiveAction(liveRows.value,liveState.value,route.path.startsWith('/matches/')?model.value.detail?.id:liveMatchId.value))
 const returnTo=ref(''),transient=ref(false)
 let sequence=0,dialogSequence=0
 const cbase=computed(()=>demo?'/competitions/'+(route.path.startsWith('/competitions/')?route.path.split('/')[2]:'autumn'):model.value.c?base(model.value.c):model.value.competitions[0]?base(model.value.competitions[0]):'/competitions')
 const displayRoute=computed(()=>demo&&modalRoute.value&&returnTo.value?router.resolve(returnTo.value):route)
 const active=computed(()=>displayRoute.value.path==='/'?'home':displayRoute.value.path.includes('/schedule')?'schedule':displayRoute.value.path.includes('/teams')?'teams':displayRoute.value.path.startsWith('/announcements')?'news':'events')
 const modalRoute=computed(()=>route.path.startsWith('/announcements/')||!!route.path.match(/^\/competitions\/[^/]+\/(teams\/[^/]+|live)$/))
-const html=computed(()=>{revision.value;return demo?renderDemo(displayRoute.value.path,displayRoute.value.query):renderApi(model.value,route.path,route.query,season.value,map.value)})
+const html=computed(()=>{revision.value;if(missing.value)return notFound();if(error.value)return '';const content=demo?renderDemo(displayRoute.value.path,displayRoute.value.query):renderApi(model.value,route.path,route.query,season.value,map.value);return responsiveImages(content)})
+watch([liveAction,html],async()=>{await nextTick();document.querySelectorAll<HTMLButtonElement>('.public-site main [data-action="live"]').forEach(button=>{button.textContent=liveAction.value.label+' ↗';button.dataset.tone=liveAction.value.tone})},{flush:'post'})
 const bracketStages=computed(()=>model.value.stages?.filter((s:any)=>!route.query.stage||s.id===route.query.stage)||[])
 function defaultReturn(){return route.path.startsWith('/announcements/')?'/announcements':route.path.replace(/\/teams\/[^/]+$/,'/teams').replace(/\/live$/,'')}
 async function open(title:string,body:string){dialogTitle.value=title;dialogBody.value=body;await nextTick();if(!dialog.value?.open)dialog.value?.showModal()}
 async function syncDialog(){
  const ticket=++dialogSequence
- if(!modalRoute.value){dialog.value?.close();return}
+ if(missing.value||!modalRoute.value){dialog.value?.close();return}
  let result:any=null
  if(demo){if(route.path.startsWith('/announcements/'))result=demoDialog('news',route.path.split('/')[2]);else if(route.path.includes('/teams/'))result=demoDialog('team',route.path.split('/')[4]);else result=demoDialog('live','')}
  else if(model.value.detail&&route.path.startsWith('/announcements/'))result={title:'赛事公告',body:article(model.value.detail)}
  else if(model.value.detail&&route.path.includes('/teams/'))result={title:'当届战队',body:teamDetail(model.value.detail)}
- else if(route.path.endsWith('/live'))result={title:'直播与回放',body:liveBody(model.value.live||[])}
+ else if(route.path.endsWith('/live'))result={title:'直播与回放',body:liveBody(liveRows.value,liveState.value,liveMatchId.value)}
  if(ticket!==dialogSequence)return
  if(result)await open(result.title,result.body)
  else await open('内容不存在','<p>该示例或内容不存在。</p>')
 }
-async function load(){const ticket=++sequence;error.value='';if(demo){await syncDialog();return}loading.value=true;model.value={competitions:[],news:[]};try{const result=await loadPublic(route.path);if(ticket===sequence){model.value=result;await syncDialog()}}catch(err:any){if(ticket===sequence)error.value=err.message}finally{if(ticket===sequence)loading.value=false}}
-watch(()=>route.path,(_path,oldPath)=>{map.value=0;transient.value=false;dialog.value?.close();load();if(!modalRoute.value&&!oldPath?.match(/^(\/announcements\/|\/competitions\/[^/]+\/(teams\/[^/]+|live)$)/))window.scrollTo({top:0});document.title=(route.path==='/'?'首页':route.path.startsWith('/matches/')?'比赛详情':route.path.startsWith('/announcements')?'赛事公告':'赛事')+' · GDUF CS'},{immediate:true})
-function close(){dialog.value?.close();dialogSequence++;if(modalRoute.value){const to=returnTo.value||defaultReturn();returnTo.value='';router.push(to)}else transient.value=false}
-async function live(){if(cbase.value==='/competitions'){transient.value=true;await open('直播与回放',liveBody([]));return}returnTo.value=route.fullPath;router.push(cbase.value+'/live')}
+async function loadLive(force=false){
+ if(demo)return
+ const key=model.value.c?base(model.value.c):model.value.competitions[0]?base(model.value.competitions[0]):''
+ const ticket=sequence
+ if(!key){liveRows.value=[];liveState.value='ready';return}
+ if(!force&&liveCache.has(key)){liveRows.value=liveCache.get(key)!;liveState.value='ready';return}
+ liveState.value='loading'
+ try{const rows=await api(key+'/live');if(ticket!==sequence)return;liveRows.value=rows;liveCache.set(key,rows);liveState.value='ready'}catch{if(ticket!==sequence)return;liveRows.value=[];liveState.value='error'}
+ if(route.path.endsWith('/live'))await syncDialog()
+}
+async function load(){const ticket=++sequence;error.value='';missing.value=!classifyPublicRoute(route.path,demo);liveRows.value=[];liveState.value=demo?'ready':'loading';updatePageMeta(route.path,missing.value);if(missing.value){dialog.value?.close();loading.value=false;return}if(demo){await syncDialog();return}loading.value=true;model.value={competitions:[],news:[]};try{const result=await loadPublic(route.path);if(ticket===sequence){model.value=result;void loadLive();await syncDialog()}}catch(err:any){if(ticket===sequence){missing.value=err.status===404;error.value=missing.value?'':err.message;dialog.value?.close();updatePageMeta(route.path,missing.value,missing.value?'':'服务暂不可用')}}finally{if(ticket===sequence)loading.value=false}}
+watch(()=>route.path,(_path,oldPath)=>{map.value=0;if(!route.path.endsWith('/live')&&!route.path.startsWith('/matches/'))liveMatchId.value='';transient.value=false;dialog.value?.close();load();if(!modalRoute.value&&!oldPath?.match(/^(\/announcements\/|\/competitions\/[^/]+\/(teams\/[^/]+|live)$)/))window.scrollTo({top:0})},{immediate:true})
+function close(){dialog.value?.close();dialogSequence++;if(modalRoute.value){const to=returnTo.value||defaultReturn();const hadSource=!!returnTo.value;returnTo.value='';if(hadSource&&window.history.state.back===to)router.back();else router.replace(to)}else transient.value=false}
+async function live(){if(route.path.startsWith('/matches/'))liveMatchId.value=model.value.detail?.id||'';if(cbase.value==='/competitions'){transient.value=true;await open('直播与回放',liveBody([]));return}returnTo.value=route.fullPath;router.push(cbase.value+'/live')}
 function updateQuery(key:string,value:string){const q={...route.query};if(value)q[key]=value;else delete q[key];router.replace({query:q})}
 async function click(event:MouseEvent){
  const target=event.target as HTMLElement,anchor=target.closest('a'),button=target.closest('button')
@@ -52,19 +69,20 @@ async function click(event:MouseEvent){
  if(d.map!==undefined){map.value=Number(d.map);demoAction('map',d.map);revision.value++;await nextTick();document.getElementById('map-tab-'+d.map)?.focus()}
  if(d.news!==undefined){returnTo.value=route.fullPath;router.push('/announcements/'+d.news)}
  if(d.team!==undefined){returnTo.value=route.fullPath;router.push(cbase.value+'/teams/'+d.team)}
+ if(d.action==='retry-live')await loadLive(true)
  if(d.action==='live')await live()
  if(d.action==='credits'){transient.value=true;await open('预览与素材说明',`<h2>关于这份预览</h2><p>${demo?'赛事、队名、昵称、日期和比分均为设计演示，公开前台不连接业务 API。':'公开内容通过现有 API 读取，以管理员发布结果为准。'}</p><p>游戏截图来自 Valve 的 <a href="https://store.steampowered.com/app/730/CounterStrike_2/" target="_blank" rel="noopener">Counter-Strike 2 官方商店页面</a>，地图配图为版式占位，不保证对应地图实景。</p><p>展示字体已保存在本地；中文使用系统字体。</p>`)}
 }
 function keys(event:KeyboardEvent){const t=event.target as HTMLElement;if(t.matches('[role=tab]')&&['ArrowLeft','ArrowRight'].includes(event.key)){event.preventDefault();const tabs=Array.from(document.querySelectorAll<HTMLElement>('.public-site [role=tab]')),i=tabs.indexOf(t);tabs[(i+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length]?.click()}}
 function backdrop(event:MouseEvent){if(event.target!==dialog.value)return;const rect=dialog.value!.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)close()}
-async function refresh(){if(document.hidden||demo||loading.value||modalRoute.value)return;const ticket=sequence;try{const result=await loadPublic(route.path);if(ticket===sequence)model.value=result}catch(err:any){error.value=err.message}}
+async function refresh(){if(document.hidden||demo||loading.value)return;if(modalRoute.value){void loadLive(true);return;}const ticket=sequence;try{const result=await loadPublic(route.path);if(ticket===sequence){model.value=result;void loadLive(true)}}catch(err:any){error.value=err.message}}
 const timer=setInterval(refresh,30000)
 document.addEventListener('visibilitychange',refresh)
 onUnmounted(()=>{document.body.style.backgroundColor=previousBackground;sequence++;dialogSequence++;clearInterval(timer);document.removeEventListener('visibilitychange',refresh)})
 </script>
 <template>
 <div class="public-site" data-theme="blue" @click="click" @keydown="keys" @change="($event.target as HTMLElement).matches('[data-stage]')&&updateQuery('stage',($event.target as HTMLSelectElement).value)">
- <header class="header"><a class="brand" href="/" aria-label="GDUF CS 首页"><span class="brand-symbol">G<span>/</span></span><span>GDUF<span class="brand-cs">CS</span><small class="brand-spacer" aria-hidden="true">&nbsp;</small></span></a><nav class="main-nav" aria-label="主导航"><a v-for="n in [['home','首页','/'],['events','赛事','/competitions'],['schedule','赛程',cbase+'/schedule'],['teams','战队',cbase+'/teams'],['news','公告','/announcements']]" :key="n[0]" :href="n[2]" :class="{active:active===n[0]}" :aria-current="active===n[0]?'page':undefined">{{n[1]}}</a></nav><button class="watch" data-action="live"><span class="play-small">▷</span> 观看直播 <span>↗</span></button></header>
+ <header class="header"><a class="brand" href="/" aria-label="GDUF CS 首页"><span class="brand-symbol">G<span>/</span></span><span>GDUF<span class="brand-cs">CS</span><small class="brand-spacer" aria-hidden="true">&nbsp;</small></span></a><nav class="main-nav" aria-label="主导航"><a v-for="n in [['home','首页','/'],['events','赛事','/competitions'],['schedule','赛程',cbase+'/schedule'],['teams','战队',cbase+'/teams'],['news','公告','/announcements']]" :key="n[0]" :href="n[2]" :class="{active:active===n[0]}" :aria-current="active===n[0]?'page':undefined">{{n[1]}}</a></nav><button class="watch" :data-tone="liveAction.tone" data-action="live"><span class="play-small">▷</span> {{liveAction.label}} <span>↗</span></button></header>
  <div v-if="error" class="empty-state" role="alert">{{error}} <button class="btn" @click="load">重试</button></div>
  <main :aria-busy="loading"><div v-if="loading" class="empty-state">正在加载赛事信息…</div><div v-else v-html="html"></div><Teleport defer to="#public-bracket" v-if="!demo&&!loading&&!error&&route.path.endsWith('/schedule')&&route.query.view==='bracket'"><div><p v-if="!bracketStages.length" class="empty-state">暂无已发布阶段</p><section v-for="stage in bracketStages" :key="stage.id"><h2>{{stage.name}}</h2><Bracket :stage-id="stage.id" /></section></div></Teleport></main>
  <footer class="footer"><div><a class="footer-brand" href="/">GDUF CS<span> / </span></a><p aria-hidden="true">&nbsp;</p></div><div class="footer-links"><a href="/competitions">全部赛事</a><a :href="cbase+'/rules'">赛事规则</a><button data-action="credits">素材说明</button><a href="/admin/login">管理</a></div><div class="footer-note">{{demo?'前端概念预览 · 示例数据':'赛事公开信息 · 真实数据'}}<br>{{demo?'不连接项目接口，不代表真实赛事安排':'以管理员正式发布信息为准'}}</div></footer>

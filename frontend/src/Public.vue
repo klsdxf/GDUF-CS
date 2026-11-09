@@ -11,7 +11,7 @@ const mode=import.meta.env.VITE_PUBLIC_DATA_MODE||'demo'
 if(!['demo','api'].includes(mode))throw new Error('VITE_PUBLIC_DATA_MODE 必须为 demo 或 api')
 const previousBackground=document.body.style.backgroundColor
 document.body.style.backgroundColor='#101216'
-const demo=mode==='demo',theme=ref('blue'),revision=ref(0),season=ref('all'),map=ref(0)
+const demo=mode==='demo',revision=ref(0),season=ref('all'),map=ref(0)
 const model=ref<any>({competitions:[],news:[]}),loading=ref(false),error=ref(''),dialog=ref<HTMLDialogElement>(),dialogTitle=ref(''),dialogBody=ref('')
 const returnTo=ref(''),transient=ref(false)
 let sequence=0,dialogSequence=0
@@ -63,8 +63,7 @@ document.addEventListener('visibilitychange',refresh)
 onUnmounted(()=>{document.body.style.backgroundColor=previousBackground;sequence++;dialogSequence++;clearInterval(timer);document.removeEventListener('visibilitychange',refresh)})
 </script>
 <template>
-<div class="public-site" :data-theme="theme" @click="click" @keydown="keys" @change="($event.target as HTMLElement).matches('[data-stage]')&&updateQuery('stage',($event.target as HTMLSelectElement).value)">
- <div class="preview-bar"><span><i></i> {{demo?'独立设计预览':'赛事公开信息'}} <span class="preview-caption">{{demo?'／所有赛事数据均为示例':'／以管理员发布结果为准'}}</span></span><div><label for="accent">视觉配色</label><select id="accent" v-model="theme"><option value="blue">竞技蓝</option><option value="yellow">荧光黄</option></select></div></div>
+<div class="public-site" data-theme="blue" @click="click" @keydown="keys" @change="($event.target as HTMLElement).matches('[data-stage]')&&updateQuery('stage',($event.target as HTMLSelectElement).value)">
  <header class="header"><a class="brand" href="/" aria-label="GDUF CS 首页"><span class="brand-symbol">G<span>/</span></span><span>GDUF<span class="brand-cs">CS</span><small class="brand-spacer" aria-hidden="true">&nbsp;</small></span></a><nav class="main-nav" aria-label="主导航"><a v-for="n in [['home','首页','/'],['events','赛事','/competitions'],['schedule','赛程',cbase+'/schedule'],['teams','战队',cbase+'/teams'],['news','公告','/announcements']]" :key="n[0]" :href="n[2]" :class="{active:active===n[0]}" :aria-current="active===n[0]?'page':undefined">{{n[1]}}</a></nav><button class="watch" data-action="live"><span class="play-small">▷</span> 观看直播 <span>↗</span></button></header>
  <div v-if="error" class="empty-state" role="alert">{{error}} <button class="btn" @click="load">重试</button></div>
  <main :aria-busy="loading"><div v-if="loading" class="empty-state">正在加载赛事信息…</div><div v-else v-html="html"></div><Teleport defer to="#public-bracket" v-if="!demo&&!loading&&!error&&route.path.endsWith('/schedule')&&route.query.view==='bracket'"><div><p v-if="!bracketStages.length" class="empty-state">暂无已发布阶段</p><section v-for="stage in bracketStages" :key="stage.id"><h2>{{stage.name}}</h2><Bracket :stage-id="stage.id" /></section></div></Teleport></main>

@@ -12,6 +12,6 @@ test('demo navigation and data isolation',async({page})=>{
  await page.goto('/competitions/autumn/teams/0');await expect(page.locator('dialog')).toBeVisible();await expect(page.locator('#dialog-body')).toContainText('kapok');await page.keyboard.press('Escape');await expect(page).toHaveURL(/autumn\/teams$/)
  await page.goto('/announcements/1');await expect(page.locator('#dialog-body')).toContainText('参赛名单');await page.locator('#close-dialog').click();await expect(page).toHaveURL(/announcements$/)
  await page.locator('.watch').click();await expect(page.locator('dialog')).toContainText('直播信息待公布');await page.keyboard.press('Escape')
- await page.selectOption('#accent','yellow');await expect(page.locator('.public-site')).toHaveAttribute('data-theme','yellow')
+ await expect(page.locator('.preview-bar')).toHaveCount(0);await expect(page.locator('.public-site')).toHaveAttribute('data-theme','blue')
  await page.goto('/admin/login');await expect(page.getByLabel('账号',{exact:true})).toBeVisible();expect(errors).toEqual([]);expect(calls.filter(x=>!x.includes('/admin/'))).toEqual([])
 })

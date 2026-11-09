@@ -31,6 +31,14 @@ case "$operation" in
     compose exec -T web nginx -t
     compose exec -T web nginx -s reload
     compose exec -T edge nginx -s reload
+    verified=false
+    for attempt in {1..10}; do
+      if curl --fail --silent --show-error --max-time 5 --noproxy '*' --connect-to "$domain:443:127.0.0.1:443" "https://$domain/api/v1/health"; then
+        printf '\n'; verified=true; break
+      fi
+      sleep 1
+    done
+    [[ "$verified" == true ]] || { echo 'HTTPS 健康检查未通过，请检查入口日志和证书；环境备份已保留'; exit 1; }
     echo "域名入口已启用：https://$domain/；请通过新域名重新登录后台。"
     echo "环境配置备份：$backup/environment；数据库密码和业务数据保持原值。"
     ;;

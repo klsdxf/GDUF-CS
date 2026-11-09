@@ -80,7 +80,7 @@ jobs:
           docker run --rm -i -v gduf_ci_source_ip_certificates:/certs nginx:1.27-alpine sh -c 'mkdir -p /certs/live/gduf-domain; cat > /certs/live/gduf-domain/fullchain.pem' < /tmp/domain-test.crt
           docker run --rm -i -v gduf_ci_source_ip_certificates:/certs nginx:1.27-alpine sh -c 'cat > /certs/live/gduf-domain/privkey.pem' < /tmp/domain-test.key
           printf 'PUBLIC_ORIGIN=https://ci.invalid\n' > .env
-          bash scripts/domain-https.sh enable www.example.test
+          CURL_CA_BUNDLE=/tmp/domain-test.crt bash scripts/domain-https.sh enable www.example.test
           curl --fail --retry 5 --retry-connrefused --noproxy '*' --cacert /tmp/domain-test.crt --connect-to www.example.test:443:127.0.0.1:443 https://www.example.test/api/v1/health
           docker compose exec -T api python -c "import os; assert os.environ['PUBLIC_ORIGIN'] == 'https://www.example.test'"
       - name: Deployment logs

@@ -27,7 +27,7 @@ for spec in 'robots.txt text/plain' 'sitemap.xml xml' 'favicon.svg image/svg+xml
   grep -qi "^content-type:.*$mime" "$tmp/headers"
 done
 # Discover current build assets, including split stylesheet URLs from the entry JS.
-grep -oE '/assets/[^" ]+\.(js|css)' "$tmp/index" > "$tmp/assets"
+grep -oE '(src|href)="/assets/[^"]+\.(js|css)"' "$tmp/index" | cut -d '"' -f 2 > "$tmp/assets"
 entry="$(grep '\.js$' "$tmp/assets" | head -1)"
 curl "${curl_args[@]}" "$origin$entry" > "$tmp/entry"
 grep -oE 'assets/[^" ]+\.css' "$tmp/entry" | sed 's|^|/|' >> "$tmp/assets" || true

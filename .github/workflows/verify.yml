@@ -36,6 +36,8 @@ jobs:
       - run: cd frontend && VITE_PUBLIC_DATA_MODE=api npm run build
   frontend-e2e:
     runs-on: windows-latest
+    env:
+      VISUAL_BASELINE_PLATFORM: windows-server-2025
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

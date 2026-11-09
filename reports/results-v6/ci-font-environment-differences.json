@@ -1,0 +1,392 @@
+{
+  "source_commit": "a65f89bead7dca1ecaf5c718761d05100634ea7c",
+  "run_id": 42648503733,
+  "ci_os": "Windows Server 2025",
+  "ci_image": "windows-2025-vs2026",
+  "comparisons": [
+    {
+      "page": "audit-home-1280-actual.png",
+      "desktop_size": [
+        1280,
+        1921
+      ],
+      "ci_size": [
+        1280,
+        1921
+      ],
+      "height_delta": 0
+    },
+    {
+      "page": "audit-home-360-actual.png",
+      "desktop_size": [
+        360,
+        2832
+      ],
+      "ci_size": [
+        360,
+        2832
+      ],
+      "height_delta": 0
+    },
+    {
+      "page": "audit-home-390-actual.png",
+      "desktop_size": [
+        390,
+        2483
+      ],
+      "ci_size": [
+        390,
+        2483
+      ],
+      "height_delta": 0
+    },
+    {
+      "page": "audit-home-768-actual.png",
+      "desktop_size": [
+        768,
+        2028
+      ],
+      "ci_size": [
+        768,
+        2028
+      ],
+      "height_delta": 0
+    },
+    {
+      "page": "audit-news-1280-actual.png",
+      "desktop_size": [
+        1280,
+        844
+      ],
+      "ci_size": [
+        1280,
+        844
+      ],
+      "height_delta": 0
+    },
+    {
+      "page": "audit-news-360-actual.png",
+      "desktop_size": [
+        360,
+        844
+      ],
+      "ci_size": [
+        360,
+        844
+      ],
+      "height_delta": 0
+    },
+    {
+      "page": "audit-news-390-actual.png",
+      "desktop_size": [
+        390,
+        844
+      ],
+      "ci_size": [
+        390,
+        844
+      ],
+      "height_delta": 0
+    },
+    {
+      "page": "audit-news-768-actual.png",
+      "desktop_size": [
+        768,
+        844
+      ],
+      "ci_size": [
+        768,
+        844
+      ],
+      "height_delta": 0
+    },
+    {
+      "page": "audit-overview-1280-actual.png",
+      "desktop_size": [
+        1280,
+        1561
+      ],
+      "ci_size": [
+        1280,
+        1557
+      ],
+      "height_delta": -4
+    },
+    {
+      "page": "audit-overview-360-actual.png",
+      "desktop_size": [
+        360,
+        2246
+      ],
+      "ci_size": [
+        360,
+        2226
+      ],
+      "height_delta": -20
+    },
+    {
+      "page": "audit-overview-390-actual.png",
+      "desktop_size": [
+        390,
+        2200
+      ],
+      "ci_size": [
+        390,
+        2200
+      ],
+      "height_delta": 0
+    },
+    {
+      "page": "audit-overview-768-actual.png",
+      "desktop_size": [
+        768,
+        1623
+      ],
+      "ci_size": [
+        768,
+        1619
+      ],
+      "height_delta": -4
+    },
+    {
+      "page": "audit-rules-1280-actual.png",
+      "desktop_size": [
+        1280,
+        1186
+      ],
+      "ci_size": [
+        1280,
+        1186
+      ],
+      "height_delta": 0
+    },
+    {
+      "page": "audit-rules-360-actual.png",
+      "desktop_size": [
+        360,
+        1403
+      ],
+      "ci_size": [
+        360,
+        1425
+      ],
+      "height_delta": 22
+    },
+    {
+      "page": "audit-rules-390-actual.png",
+      "desktop_size": [
+        390,
+        1379
+      ],
+      "ci_size": [
+        390,
+        1379
+      ],
+      "height_delta": 0
+    },
+    {
+      "page": "audit-rules-768-actual.png",
+      "desktop_size": [
+        768,
+        1319
+      ],
+      "ci_size": [
+        768,
+        1319
+      ],
+      "height_delta": 0
+    },
+    {
+      "page": "audit-schedule-1280-actual.png",
+      "desktop_size": [
+        1280,
+        932
+      ],
+      "ci_size": [
+        1280,
+        932
+      ],
+      "height_delta": 0
+    },
+    {
+      "page": "audit-schedule-360-actual.png",
+      "desktop_size": [
+        360,
+        1138
+      ],
+      "ci_size": [
+        360,
+        1138
+      ],
+      "height_delta": 0
+    },
+    {
+      "page": "audit-schedule-390-actual.png",
+      "desktop_size": [
+        390,
+        1074
+      ],
+      "ci_size": [
+        390,
+        1074
+      ],
+      "height_delta": 0
+    },
+    {
+      "page": "audit-schedule-768-actual.png",
+      "desktop_size": [
+        768,
+        1013
+      ],
+      "ci_size": [
+        768,
+        1013
+      ],
+      "height_delta": 0
+    },
+    {
+      "page": "audit-score-1280-actual.png",
+      "desktop_size": [
+        1280,
+        1753
+      ],
+      "ci_size": [
+        1280,
+        1753
+      ],
+      "height_delta": 0
+    },
+    {
+      "page": "audit-score-360-actual.png",
+      "desktop_size": [
+        360,
+        2331
+      ],
+      "ci_size": [
+        360,
+        2331
+      ],
+      "height_delta": 0
+    },
+    {
+      "page": "audit-score-390-actual.png",
+      "desktop_size": [
+        390,
+        2320
+      ],
+      "ci_size": [
+        390,
+        2335
+      ],
+      "height_delta": 15
+    },
+    {
+      "page": "audit-score-768-actual.png",
+      "desktop_size": [
+        768,
+        1834
+      ],
+      "ci_size": [
+        768,
+        1834
+      ],
+      "height_delta": 0
+    },
+    {
+      "page": "audit-standings-1280-actual.png",
+      "desktop_size": [
+        1280,
+        1086
+      ],
+      "ci_size": [
+        1280,
+        1086
+      ],
+      "height_delta": 0
+    },
+    {
+      "page": "audit-standings-360-actual.png",
+      "desktop_size": [
+        360,
+        1140
+      ],
+      "ci_size": [
+        360,
+        1140
+      ],
+      "height_delta": 0
+    },
+    {
+      "page": "audit-standings-390-actual.png",
+      "desktop_size": [
+        390,
+        1140
+      ],
+      "ci_size": [
+        390,
+        1140
+      ],
+      "height_delta": 0
+    },
+    {
+      "page": "audit-standings-768-actual.png",
+      "desktop_size": [
+        768,
+        1166
+      ],
+      "ci_size": [
+        768,
+        1166
+      ],
+      "height_delta": 0
+    },
+    {
+      "page": "audit-teams-1280-actual.png",
+      "desktop_size": [
+        1280,
+        1124
+      ],
+      "ci_size": [
+        1280,
+        1124
+      ],
+      "height_delta": 0
+    },
+    {
+      "page": "audit-teams-360-actual.png",
+      "desktop_size": [
+        360,
+        1623
+      ],
+      "ci_size": [
+        360,
+        1623
+      ],
+      "height_delta": 0
+    },
+    {
+      "page": "audit-teams-390-actual.png",
+      "desktop_size": [
+        390,
+        1617
+      ],
+      "ci_size": [
+        390,
+        1617
+      ],
+      "height_delta": 0
+    },
+    {
+      "page": "audit-teams-768-actual.png",
+      "desktop_size": [
+        768,
+        1205
+      ],
+      "ci_size": [
+        768,
+        1205
+      ],
+      "height_delta": 0
+    }
+  ]
+}

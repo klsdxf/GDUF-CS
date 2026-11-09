@@ -1,5 +1,7 @@
 import os
 import secrets
+import asyncio
+import time
 from datetime import timedelta
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
@@ -11,8 +13,34 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from .db import Admin, AdminSession, db_session, now
 from .security import authenticated, digest, fail
+from .schemas import Login, PasswordChange
 
 app = FastAPI(title='广金主场 API', version='1.0.0')
+public_cache = {}
+public_locks = {}
+
+@app.middleware('http')
+async def read_cache(request, call_next):
+    path=request.url.path
+    if request.method=='GET' and path.startswith('/api/v1/') and '/admin/' not in path and not path.endswith('/health'):
+        key=str(request.url)
+        if len(public_locks)>512:
+            public_locks.clear()
+        lock=public_locks.setdefault(key,asyncio.Lock())
+        async with lock:
+            cached=public_cache.get(key)
+            if cached and cached[0]>time.monotonic():return Response(cached[1],media_type='application/json')
+            response=await call_next(request)
+            if response.status_code==200:
+                body=b''.join([part async for part in response.body_iterator])
+                if len(public_cache)>512:public_cache.clear()
+                public_cache[key]=(time.monotonic()+2,body)
+                return Response(body,status_code=200,headers=dict(response.headers))
+            return response
+    response=await call_next(request)
+    if request.method not in ('GET','HEAD') and '/admin/' in path and response.status_code<300:
+        public_cache.clear()
+    return response
 ph = PasswordHasher()
 login_attempts = {}
 
@@ -43,7 +71,8 @@ def health(db: Session = Depends(db_session)):
     return {'data': {'status': 'ok'}}
 
 @app.post('/api/v1/admin/auth/login')
-def login(payload: dict, request: Request, response: Response, db: Session = Depends(db_session)):
+def login(payload: Login, request: Request, response: Response, db: Session = Depends(db_session)):
+    payload=payload.model_dump()
     if request.headers.get('origin') != os.getenv('PUBLIC_ORIGIN', 'http://localhost:5173'):
         fail('ORIGIN', '请求来源不符', 403)
     ip = request.client.host
@@ -87,7 +116,8 @@ media.mkdir(parents=True, exist_ok=True)
 app.mount('/media', StaticFiles(directory=str(media)), name='media')
 
 @app.put('/api/v1/admin/auth/password')
-def password(payload: dict, session=Depends(authenticated), db: Session = Depends(db_session)):
+def password(payload: PasswordChange, session=Depends(authenticated), db: Session = Depends(db_session)):
+    payload=payload.model_dump()
     admin = db.get(Admin, 1)
     try:
         ph.verify(admin.password_hash, payload.get('current_password', ''))

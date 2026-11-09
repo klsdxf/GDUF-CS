@@ -61,7 +61,11 @@ def generate_graph(entries,kind,config):
                 for a,b in combinations(group,2):
                     game(a,b,'group'+label,rnd,label)
         qualifiers=[f'group:{chr(65+g)}:{rank}' for rank in range(1,qualify+1) for g in range(count)]
-        knockout(qualifiers,'playoff')
+        if config.get('qualifier_order'):
+            if set(config['qualifier_order'])!=set(qualifiers) or len(config['qualifier_order'])!=len(qualifiers):fail('QUALIFIERS','跨组种子必须完整且不重复')
+            qualifiers=config['qualifier_order']
+        _,playoff_rounds=knockout(qualifiers,'playoff')
+        if config.get('third_place') and len(playoff_rounds)>=2:game(*playoff_rounds[-2],'third',1)
     else:
         upper,rounds=knockout(entries)
         if config.get('third_place') and len(rounds)>=2:
@@ -193,4 +197,10 @@ def arrange(key:str,payload:dict,db:Session=Depends(db_session)):
         if payload['status']=='ongoing' and (not m.a or not m.b):fail('TBD','双方未确定')
         m.status=payload['status']
     audit(db,'match.arrange',m.id,payload)
+    return {'data':serialize(m)}
+
+@router.get('/matches/{key}')
+def get_match(key:str,db:Session=Depends(db_session)):
+    m=db.get(Match,key)
+    if not m:fail('NOT_FOUND','比赛不存在',404)
     return {'data':serialize(m)}

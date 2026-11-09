@@ -1,0 +1,323 @@
+{
+  "schema_version": "1.0",
+  "captured_on": "2026-11-09",
+  "timezone": "Asia/Shanghai",
+  "purpose": "已确认静态预览的数据归档；非后端导入文件",
+  "fictional": true,
+  "default_state": {
+    "route": "#home",
+    "theme": "blue",
+    "season": "all",
+    "selected_day": "14",
+    "selected_map": 0,
+    "schedule_view": "list",
+    "edition": "autumn"
+  },
+  "competitions": [
+    {
+      "id": "autumn",
+      "name": "2026 秋季赛",
+      "season": "2026",
+      "date_label": "11.07 — 11.29",
+      "status_label": "进行中",
+      "team_count_label": 16,
+      "poster": "AUTUMN",
+      "image": "assets/cs2-1.jpg"
+    },
+    {
+      "id": "spring",
+      "name": "2026 春季赛",
+      "season": "2026",
+      "date_label": "04.11 — 04.26",
+      "status_label": "已结束",
+      "poster": "SPRING",
+      "image": "assets/cs2-2.jpg"
+    },
+    {
+      "id": "archive",
+      "name": "2025 秋季赛",
+      "season": "2025",
+      "date_label": "11.08 — 11.23",
+      "status_label": "已归档",
+      "poster": "FALL",
+      "image": "assets/cs2-3.jpg"
+    }
+  ],
+  "raw_preview_data": {
+    "teams": [
+      [
+        "木棉 FIVE",
+        "MF",
+        "KAPOK FIVE"
+      ],
+      [
+        "金融风暴",
+        "FS",
+        "FINANCE STORM"
+      ],
+      [
+        "北苑竞技",
+        "NA",
+        "NORTH ARENA"
+      ],
+      [
+        "不加班战队",
+        "OT",
+        "NO OVERTIME"
+      ],
+      [
+        "致远 Gaming",
+        "ZY",
+        "ZHIYUAN GAMING"
+      ],
+      [
+        "明德 United",
+        "MD",
+        "MINGDE UNITED"
+      ],
+      [
+        "五排事务所",
+        "FF",
+        "FIVE FRIENDS"
+      ],
+      [
+        "最后一局",
+        "LR",
+        "LAST ROUND"
+      ]
+    ],
+    "members": [
+      [
+        "kapok",
+        "队长 · 正式"
+      ],
+      [
+        "north",
+        "正式"
+      ],
+      [
+        "mango",
+        "正式"
+      ],
+      [
+        "river",
+        "正式"
+      ],
+      [
+        "echo",
+        "正式"
+      ]
+    ],
+    "opponents": [
+      [
+        "storm",
+        "队长 · 正式"
+      ],
+      [
+        "zero",
+        "正式"
+      ],
+      [
+        "finch",
+        "正式"
+      ],
+      [
+        "nine",
+        "正式"
+      ],
+      [
+        "orbit",
+        "正式"
+      ]
+    ],
+    "news": [
+      [
+        "11.09",
+        "秋季赛第二周赛程安排",
+        "比赛日 / 赛程更新",
+        "第二周比赛将在 11 月 14 日、15 日举行。请参赛队伍根据赛程提前确认出场名单。本页为前端设计演示，日期及安排均为示例。"
+      ],
+      [
+        "11.07",
+        "2026 秋季赛参赛名单公示",
+        "赛事公告 / 队伍名单",
+        "本届赛事参赛名单已完成整理。各队队员昵称、正式与替补身份可在战队页面查看。本页展示的是虚构队伍与昵称，不对应实际参赛者。"
+      ],
+      [
+        "11.05",
+        "竞赛规则与地图池说明",
+        "竞赛规则 / 赛前须知",
+        "本预览以小组赛加单败淘汰赛为示例。最终比赛形式、BO 与地图池应以实际发布的正式赛事规则为准。"
+      ]
+    ],
+    "fixtures": {
+      "14": [
+        [
+          "19:00",
+          "木棉 FIVE",
+          "MF",
+          "北苑竞技",
+          "NA",
+          "VS",
+          "待开始"
+        ],
+        [
+          "20:30",
+          "金融风暴",
+          "FS",
+          "不加班战队",
+          "OT",
+          "VS",
+          "待开始"
+        ]
+      ],
+      "15": [],
+      "07": [
+        [
+          "18:00",
+          "北苑竞技",
+          "NA",
+          "不加班战队",
+          "OT",
+          "2 : 0",
+          "已结束"
+        ],
+        [
+          "19:30",
+          "木棉 FIVE",
+          "MF",
+          "不加班战队",
+          "OT",
+          "2 : 0",
+          "已结束"
+        ]
+      ],
+      "08": [
+        [
+          "19:00",
+          "木棉 FIVE",
+          "MF",
+          "金融风暴",
+          "FS",
+          "2 : 1",
+          "已结束"
+        ],
+        [
+          "20:30",
+          "金融风暴",
+          "FS",
+          "北苑竞技",
+          "NA",
+          "2 : 1",
+          "已结束"
+        ]
+      ]
+    },
+    "maps": [
+      "Inferno",
+      "Mirage",
+      "Ancient"
+    ]
+  },
+  "field_order": {
+    "teams": [
+      "name",
+      "code",
+      "english_label"
+    ],
+    "members": [
+      "nickname",
+      "role_label"
+    ],
+    "opponents": [
+      "nickname",
+      "role_label"
+    ],
+    "news": [
+      "month_day",
+      "title",
+      "category_label",
+      "body"
+    ],
+    "fixtures": [
+      "time",
+      "team_a",
+      "code_a",
+      "team_b",
+      "code_b",
+      "series_score_label",
+      "status_label"
+    ]
+  },
+  "group_a_standings": [
+    {
+      "rank": 1,
+      "team_code": "MF",
+      "wins": 2,
+      "losses": 0,
+      "points": 6
+    },
+    {
+      "rank": 2,
+      "team_code": "FS",
+      "wins": 1,
+      "losses": 1,
+      "points": 3
+    },
+    {
+      "rank": 3,
+      "team_code": "NA",
+      "wins": 1,
+      "losses": 1,
+      "points": 3
+    },
+    {
+      "rank": 4,
+      "team_code": "OT",
+      "wins": 0,
+      "losses": 2,
+      "points": 0
+    }
+  ],
+  "featured_match": {
+    "date": "2026-11-08",
+    "time": "19:00",
+    "group": "A",
+    "best_of": 3,
+    "team_a": "MF",
+    "team_b": "FS",
+    "status": "completed",
+    "confirmed": true,
+    "series_wins_a": 2,
+    "series_wins_b": 1,
+    "maps": [
+      {
+        "name": "Inferno",
+        "score_a": 13,
+        "score_b": 8
+      },
+      {
+        "name": "Mirage",
+        "score_a": 9,
+        "score_b": 13
+      },
+      {
+        "name": "Ancient",
+        "score_a": 13,
+        "score_b": 10
+      }
+    ]
+  },
+  "rendering_rules": {
+    "non_featured_completed_matches": "原预览 getMatch：2:0 使用 [[13,8],[13,9]]，其他已完成场次使用 [[13,8],[9,13],[13,10]]；仅为静态演示推导，不代表逐场真实记录",
+    "team_rosters": "首队 members、第二队 opponents，其余由队伍缩写及 ace/nova/mint/six/sky 或 app.js 内对应规则生成",
+    "historic_competitions": "仅保留赛事封面、名称、日期、归档状态和占位说明；没有历史赛果",
+    "map_images": "地图 2 使用 cs2-3.jpg，其余使用 cs2-2.jpg，仅为版式占位，不保证是对应地图实景"
+  },
+  "limitations": [
+    "页面宣称16队，原预览只提供8支示例队伍；本归档不补造其余8队。",
+    "不含真实Steam ID、联系方式、管理员账号或密码。",
+    "不含数据库主键、名单版本、晋级边等后端必需对象，不可直接当作合法导入包。",
+    "完整模板、文案及派生逻辑以同目录原始 app.js 为准，JSON 只便于后续数据映射。"
+  ]
+}

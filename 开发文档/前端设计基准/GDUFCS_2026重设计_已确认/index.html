@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>GDUF CS — 独立前端概念预览</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="preview-bar"><span><i></i> 独立设计预览 <span class="preview-caption">／所有赛事数据均为示例</span></span><div><label for="accent">视觉配色</label><select id="accent"><option value="blue">竞技蓝</option><option value="yellow">荧光黄</option></select></div></div>
+  <header class="header">
+    <a class="brand" href="#home" aria-label="GDUF CS 首页"><span class="brand-symbol">G<span>/</span></span><span>GDUF<span class="brand-cs">CS</span><small class="brand-spacer" aria-hidden="true">&nbsp;</small></span></a>
+    <nav class="main-nav" aria-label="主导航"><a href="#home" data-nav="home">首页</a><a href="#events" data-nav="events">赛事</a><a href="#event/schedule" data-nav="schedule">赛程</a><a href="#event/teams" data-nav="teams">战队</a><a href="#news" data-nav="news">公告</a></nav>
+    <button class="watch" data-action="live"><span class="play-small">▷</span> 观看直播 <span>↗</span></button>
+  </header>
+  <main id="app"></main>
+  <footer class="footer"><div><a class="footer-brand" href="#home">GDUF CS<span> / </span></a><p aria-hidden="true">&nbsp;</p></div><div class="footer-links"><a href="#events">全部赛事</a><a href="#event/rules">赛事规则</a><button data-action="credits">素材说明</button></div><div class="footer-note">前端概念预览 · 示例数据<br>不连接项目接口，不代表真实赛事安排</div></footer>
+  <dialog id="dialog"><div class="dialog-top"><span id="dialog-label">详情</span><button id="close-dialog" aria-label="关闭弹窗">×</button></div><div id="dialog-body"></div></dialog>
+  <script src="app.js"></script>
+</body>
+</html>

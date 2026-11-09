@@ -1,0 +1,118 @@
+{
+  "version": "1.0",
+  "confirmed_on": "2026-11-09",
+  "name": "GDUF CS 2026 重设计最终确认稿",
+  "source": "本对话独立预览 gdufcs-preview 的最后确认版本；原样复制",
+  "scope": "静态前台、演示交互与示例数据；非业务程序迁移或线上部署",
+  "default_theme": "blue",
+  "alternative_theme": "yellow",
+  "changes_confirmed": [
+    "主视觉原总体布局保持",
+    "右下G/与GDUF CS组合",
+    "删除广东金融学院 · 学生社团赛事中文说明",
+    "示例数据先保留推送，后按实际修改",
+    "先实现功能，最后一轮统一审查测试"
+  ],
+  "copy_policy": "冻结源码／已有素材与原预览逐字节相同，JSON和许可为另存归档",
+  "files": [
+    {
+      "path": ".gitattributes",
+      "bytes": 80,
+      "sha256": "d38393c4c60077d7689386716c4eaf7334809186e6696a21d40ac0b9c134e806"
+    },
+    {
+      "path": "app.js",
+      "bytes": 23941,
+      "sha256": "6d39d08a47d7e90f6e1e6ff61e2242fd8a67e3ab594713027db176839404a111"
+    },
+    {
+      "path": "assets/barlow-500.woff2",
+      "bytes": 81448,
+      "sha256": "cc9fb2539cf27df48255982e896d28f544483537cdb41f9fabd741af8992d719"
+    },
+    {
+      "path": "assets/barlow-600.woff2",
+      "bytes": 86636,
+      "sha256": "0d85af813fc3ed87db0c6265515689b2eef5cbaf7aab17922528dfc95a2cd73f"
+    },
+    {
+      "path": "assets/barlow-700.woff2",
+      "bytes": 87120,
+      "sha256": "7dde307fa887fc65ff5830cfada77a7decc5dae8d3c816c9d39ba3f1af1c4ed7"
+    },
+    {
+      "path": "assets/barlow-800.woff2",
+      "bytes": 87556,
+      "sha256": "73bc9e17231e9073780d3c81574c7253cecd5645c93544df1a935054b39a364f"
+    },
+    {
+      "path": "assets/barlow-900.woff2",
+      "bytes": 88228,
+      "sha256": "0ec6b3cca2df54f108f8dc239597e0eab386343a230afad8a0f445c7d21c3e77"
+    },
+    {
+      "path": "assets/cs2-0.jpg",
+      "bytes": 501241,
+      "sha256": "2cab42e06f2878d31cd0bec1c1262d7b06c44a37822b453b553c4ed0ddd8ecba"
+    },
+    {
+      "path": "assets/cs2-1.jpg",
+      "bytes": 491510,
+      "sha256": "5cc0cdc8bcd352a3e5fe55b71cedd124c03d51d8dfb51de33bfa7a0db8ed98f1"
+    },
+    {
+      "path": "assets/cs2-2.jpg",
+      "bytes": 514714,
+      "sha256": "f38e7018741194ee2f24b47cc64e2a44155ba9baa0b2b61e377486c239b46468"
+    },
+    {
+      "path": "assets/cs2-3.jpg",
+      "bytes": 309414,
+      "sha256": "f8e7411cecd0dfe4b300865174ae2bd7a28ced935db5aa61784933b4dce97db5"
+    },
+    {
+      "path": "assets/fonts.css",
+      "bytes": 848,
+      "sha256": "6b67acb96c4c57f68519b44d5a7cce591470fb5a69e59826bd3102b8cca99068"
+    },
+    {
+      "path": "assets/OFL.txt",
+      "bytes": 4377,
+      "sha256": "186d750eb496a4c17a76385f82be6aea2ac1cf2de074a811d63786cf374ea73f"
+    },
+    {
+      "path": "index.html",
+      "bytes": 1981,
+      "sha256": "12318cdbb82f468ad2bf6c0b386cce220e3195e22a7adca6231c21e967576d42"
+    },
+    {
+      "path": "README.md",
+      "bytes": 2348,
+      "sha256": "050c5be2f404de373664c54060f8b251f5cfda28315fddec073df8caa218b46c"
+    },
+    {
+      "path": "style.css",
+      "bytes": 29097,
+      "sha256": "633d4396911cbb2f4eb28d77554451004e167106266b7a634cdf90c19c8b997e"
+    },
+    {
+      "path": "示例赛事数据.json",
+      "bytes": 6907,
+      "sha256": "9cee5963c1984a1e2deab5f513bdd754f5eadf995455bf57fdbac8807f590ceb"
+    }
+  ],
+  "sources": {
+    "game_store": "https://store.steampowered.com/app/730/CounterStrike_2/",
+    "screenshot_api": "https://store.steampowered.com/api/appdetails?appids=730&l=english",
+    "font_stylesheet": "https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&display=swap",
+    "font_license": "https://raw.githubusercontent.com/google/fonts/main/ofl/barlowcondensed/OFL.txt",
+    "image_note": "前四张官方商店截图原样保存；地图配图仅为版式占位"
+  },
+  "not_claimed": [
+    "Vue迁移已经完成",
+    "示例数据库可直接导入",
+    "新设计最终审查测试已通过",
+    "新版线上部署已完成"
+  ],
+  "hash_scope": "除本清单自身之外的全部归档文件；子目录 .gitattributes 禁止 Git 换行转换以保存原始字节。"
+}

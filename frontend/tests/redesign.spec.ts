@@ -1,0 +1,17 @@
+import {test,expect} from '@playwright/test'
+test('demo navigation and data isolation',async({page})=>{
+ const calls:string[]=[],errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(r.url().includes('/api/'))calls.push(r.url())})
+ await page.goto('/');await expect(page.locator('.hero h1')).toHaveText('AUTUMN2026')
+ await page.locator('[data-season="2025"]').click();await expect(page.locator('.event-card')).toHaveCount(1)
+ await page.locator('.event-card').click();await expect(page).toHaveURL(/competitions\/archive/);await expect(page.locator('.event-body')).toContainText('未填充历史赛果')
+ await page.goto('/competitions/autumn/schedule');await page.locator('[data-day="15"]').click();await expect(page.locator('#fixture-rows')).toContainText('暂无已安排比赛')
+ await page.locator('[data-view="bracket"]').click();await expect(page).toHaveURL(/view=bracket/);await expect(page.locator('.rules-body')).toContainText('A1 vs B2')
+ await page.goto('/matches/featured');await page.locator('[data-map="1"]').click();await expect(page.locator('#map-report')).toContainText('Mirage');await expect(page.locator('#map-report')).toContainText('金融风暴 获胜')
+ await page.keyboard.press('ArrowRight');await expect(page.locator('#map-report')).toContainText('Ancient')
+ await page.goto('/matches/upcoming');await expect(page.locator('.match-final')).toContainText('比分尚未产生');await expect(page.locator('.map-tab')).toHaveCount(0)
+ await page.goto('/competitions/autumn/teams/0');await expect(page.locator('dialog')).toBeVisible();await expect(page.locator('#dialog-body')).toContainText('kapok');await page.keyboard.press('Escape');await expect(page).toHaveURL(/autumn\/teams$/)
+ await page.goto('/announcements/1');await expect(page.locator('#dialog-body')).toContainText('参赛名单');await page.locator('#close-dialog').click();await expect(page).toHaveURL(/announcements$/)
+ await page.locator('.watch').click();await expect(page.locator('dialog')).toContainText('直播信息待公布');await page.keyboard.press('Escape')
+ await page.selectOption('#accent','yellow');await expect(page.locator('.public-site')).toHaveAttribute('data-theme','yellow')
+ await page.goto('/admin/login');await expect(page.getByLabel('账号',{exact:true})).toBeVisible();expect(errors).toEqual([]);expect(calls.filter(x=>!x.includes('/admin/'))).toEqual([])
+})

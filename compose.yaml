@@ -37,7 +37,10 @@ services:
     restart: unless-stopped
     logging: *logs
   web:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        VITE_PUBLIC_DATA_MODE: ${VITE_PUBLIC_DATA_MODE:-demo}
     ports: ['127.0.0.1:8080:80']
     depends_on:
       api: {condition: service_healthy}

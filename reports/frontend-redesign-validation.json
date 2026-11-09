@@ -1,0 +1,490 @@
+{
+  "date": "2026-11-09",
+  "environment": "Windows / Microsoft Edge / DPR 1 / same browser and fonts",
+  "backend_tests_passed": 34,
+  "public_browser_tests_passed": 65,
+  "isolated_admin_workflow_passed": true,
+  "isolated_live_api_integration_passed": true,
+  "visual_comparisons": 68,
+  "max_channel_delta": 3,
+  "max_fraction_over_one": 0.0005730982823195144,
+  "measurements": {
+    "home-1920-blue": {
+      "width": 1920,
+      "height": 1814,
+      "changed_pixels": 7,
+      "max_channel_delta": 1,
+      "pixels_over_one": 0
+    },
+    "home-1920-yellow": {
+      "width": 1920,
+      "height": 1814,
+      "changed_pixels": 5321,
+      "max_channel_delta": 1,
+      "pixels_over_one": 0
+    },
+    "home-1600-blue": {
+      "width": 1600,
+      "height": 1814,
+      "changed_pixels": 67,
+      "max_channel_delta": 2,
+      "pixels_over_one": 1
+    },
+    "home-1600-yellow": {
+      "width": 1600,
+      "height": 1814,
+      "changed_pixels": 3702,
+      "max_channel_delta": 1,
+      "pixels_over_one": 0
+    },
+    "home-1599-blue": {
+      "width": 1599,
+      "height": 1714,
+      "changed_pixels": 124100,
+      "max_channel_delta": 3,
+      "pixels_over_one": 11
+    },
+    "home-1599-yellow": {
+      "width": 1599,
+      "height": 1714,
+      "changed_pixels": 6873,
+      "max_channel_delta": 1,
+      "pixels_over_one": 0
+    },
+    "home-1051-blue": {
+      "width": 1051,
+      "height": 1669,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "home-1051-yellow": {
+      "width": 1051,
+      "height": 1669,
+      "changed_pixels": 4732,
+      "max_channel_delta": 1,
+      "pixels_over_one": 0
+    },
+    "home-1050-blue": {
+      "width": 1050,
+      "height": 1639,
+      "changed_pixels": 73741,
+      "max_channel_delta": 3,
+      "pixels_over_one": 12
+    },
+    "home-1050-yellow": {
+      "width": 1050,
+      "height": 1639,
+      "changed_pixels": 2339,
+      "max_channel_delta": 1,
+      "pixels_over_one": 0
+    },
+    "home-761-blue": {
+      "width": 761,
+      "height": 1639,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "home-761-yellow": {
+      "width": 761,
+      "height": 1639,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "home-760-blue": {
+      "width": 760,
+      "height": 1881,
+      "changed_pixels": 3894,
+      "max_channel_delta": 1,
+      "pixels_over_one": 0
+    },
+    "home-760-yellow": {
+      "width": 760,
+      "height": 1881,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "home-390-blue": {
+      "width": 390,
+      "height": 1881,
+      "changed_pixels": 1979,
+      "max_channel_delta": 1,
+      "pixels_over_one": 0
+    },
+    "home-390-yellow": {
+      "width": 390,
+      "height": 1881,
+      "changed_pixels": 1979,
+      "max_channel_delta": 1,
+      "pixels_over_one": 0
+    },
+    "home-381-blue": {
+      "width": 381,
+      "height": 1893,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "home-381-yellow": {
+      "width": 381,
+      "height": 1893,
+      "changed_pixels": 1898,
+      "max_channel_delta": 1,
+      "pixels_over_one": 0
+    },
+    "home-380-blue": {
+      "width": 380,
+      "height": 2199,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "home-380-yellow": {
+      "width": 380,
+      "height": 2199,
+      "changed_pixels": 25033,
+      "max_channel_delta": 3,
+      "pixels_over_one": 2
+    },
+    "home-320-blue": {
+      "width": 320,
+      "height": 2200,
+      "changed_pixels": 15150,
+      "max_channel_delta": 1,
+      "pixels_over_one": 0
+    },
+    "home-320-yellow": {
+      "width": 320,
+      "height": 2200,
+      "changed_pixels": 1494,
+      "max_channel_delta": 1,
+      "pixels_over_one": 0
+    },
+    "events-1440-blue": {
+      "width": 1440,
+      "height": 595,
+      "changed_pixels": 2722,
+      "max_channel_delta": 1,
+      "pixels_over_one": 0
+    },
+    "event-1440-blue": {
+      "width": 1440,
+      "height": 1301,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "event-schedule-1440-blue": {
+      "width": 1440,
+      "height": 977,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "event-standings-1440-blue": {
+      "width": 1440,
+      "height": 1127,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "event-teams-1440-blue": {
+      "width": 1440,
+      "height": 1166,
+      "changed_pixels": 7091,
+      "max_channel_delta": 1,
+      "pixels_over_one": 0
+    },
+    "event-rules-1440-blue": {
+      "width": 1440,
+      "height": 1231,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "news-1440-blue": {
+      "width": 1440,
+      "height": 514,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "match-1440-blue": {
+      "width": 1440,
+      "height": 1505,
+      "changed_pixels": 32506,
+      "max_channel_delta": 1,
+      "pixels_over_one": 0
+    },
+    "match-upcoming-1440-blue": {
+      "width": 1440,
+      "height": 1296,
+      "changed_pixels": 9,
+      "max_channel_delta": 2,
+      "pixels_over_one": 1
+    },
+    "events-1440-yellow": {
+      "width": 1440,
+      "height": 595,
+      "changed_pixels": 6374,
+      "max_channel_delta": 1,
+      "pixels_over_one": 0
+    },
+    "event-1440-yellow": {
+      "width": 1440,
+      "height": 1301,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "event-schedule-1440-yellow": {
+      "width": 1440,
+      "height": 977,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "event-standings-1440-yellow": {
+      "width": 1440,
+      "height": 1127,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "event-teams-1440-yellow": {
+      "width": 1440,
+      "height": 1166,
+      "changed_pixels": 7093,
+      "max_channel_delta": 1,
+      "pixels_over_one": 0
+    },
+    "event-rules-1440-yellow": {
+      "width": 1440,
+      "height": 1231,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "news-1440-yellow": {
+      "width": 1440,
+      "height": 514,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "match-1440-yellow": {
+      "width": 1440,
+      "height": 1505,
+      "changed_pixels": 32512,
+      "max_channel_delta": 1,
+      "pixels_over_one": 0
+    },
+    "match-upcoming-1440-yellow": {
+      "width": 1440,
+      "height": 1296,
+      "changed_pixels": 8,
+      "max_channel_delta": 1,
+      "pixels_over_one": 0
+    },
+    "events-390-blue": {
+      "width": 390,
+      "height": 849,
+      "changed_pixels": 5002,
+      "max_channel_delta": 1,
+      "pixels_over_one": 0
+    },
+    "event-390-blue": {
+      "width": 390,
+      "height": 1775,
+      "changed_pixels": 2372,
+      "max_channel_delta": 1,
+      "pixels_over_one": 0
+    },
+    "event-schedule-390-blue": {
+      "width": 390,
+      "height": 1030,
+      "changed_pixels": 2370,
+      "max_channel_delta": 1,
+      "pixels_over_one": 0
+    },
+    "event-standings-390-blue": {
+      "width": 390,
+      "height": 1138,
+      "changed_pixels": 2370,
+      "max_channel_delta": 1,
+      "pixels_over_one": 0
+    },
+    "event-teams-390-blue": {
+      "width": 390,
+      "height": 1613,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "event-rules-390-blue": {
+      "width": 390,
+      "height": 1381,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "news-390-blue": {
+      "width": 390,
+      "height": 398,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "match-390-blue": {
+      "width": 390,
+      "height": 1922,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "match-upcoming-390-blue": {
+      "width": 390,
+      "height": 1559,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "events-390-yellow": {
+      "width": 390,
+      "height": 849,
+      "changed_pixels": 789,
+      "max_channel_delta": 1,
+      "pixels_over_one": 0
+    },
+    "event-390-yellow": {
+      "width": 390,
+      "height": 1775,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "event-schedule-390-yellow": {
+      "width": 390,
+      "height": 1030,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "event-standings-390-yellow": {
+      "width": 390,
+      "height": 1138,
+      "changed_pixels": 2369,
+      "max_channel_delta": 1,
+      "pixels_over_one": 0
+    },
+    "event-teams-390-yellow": {
+      "width": 390,
+      "height": 1613,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "event-rules-390-yellow": {
+      "width": 390,
+      "height": 1381,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "news-390-yellow": {
+      "width": 390,
+      "height": 398,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "match-390-yellow": {
+      "width": 390,
+      "height": 1922,
+      "changed_pixels": 11437,
+      "max_channel_delta": 2,
+      "pixels_over_one": 1
+    },
+    "match-upcoming-390-yellow": {
+      "width": 390,
+      "height": 1559,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "header-1440": {
+      "width": 1440,
+      "height": 94,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "news-dialog-1440": {
+      "width": 550,
+      "height": 322,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "team-dialog-1440": {
+      "width": 550,
+      "height": 562,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "header-390": {
+      "width": 390,
+      "height": 118,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "news-dialog-390": {
+      "width": 356,
+      "height": 348,
+      "changed_pixels": 167,
+      "max_channel_delta": 2,
+      "pixels_over_one": 71
+    },
+    "map-selected-1440": {
+      "width": 1440,
+      "height": 1505,
+      "changed_pixels": 2,
+      "max_channel_delta": 1,
+      "pixels_over_one": 0
+    },
+    "footer-1440": {
+      "width": 1440,
+      "height": 145,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "team-dialog-390": {
+      "width": 356,
+      "height": 586,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "map-selected-390": {
+      "width": 390,
+      "height": 1922,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    },
+    "footer-390": {
+      "width": 390,
+      "height": 233,
+      "changed_pixels": 0,
+      "max_channel_delta": 0,
+      "pixels_over_one": 0
+    }
+  },
+  "note": "58 page cases passed in consolidated run; 2 interaction cases fixed and retested; 5 functional cases retested. Backend and live API use isolated acceptance database. CI and production deployment are separate."
+}

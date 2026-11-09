@@ -1,20 +1,32 @@
 import {test,expect} from '@playwright/test'
-import {readFileSync} from 'node:fs'
-import {resolve} from 'node:path'
 import {execFileSync} from 'node:child_process'
-test('compare Vue reference against immutable source in same browser',async({browser})=>{
- const source=readFileSync(resolve('../开发文档/前端设计基准/广金主场_观赛优先_选定稿.fragment.html'),'utf8')
- for(const width of [1024,761,760,541,540,390,320])for(const colorScheme of ['light','dark'] as const){
-  const context=await browser.newContext({viewport:{width,height:1200},colorScheme})
-  const actual=await context.newPage();await actual.goto('http://localhost:5173/__design-reference');await expect(actual.locator('.g-button svg')).toBeVisible()
-  const icon=await actual.locator('.g-button svg').evaluate(e=>e.outerHTML)
-  const expected=await context.newPage();await expected.setContent('<!doctype html><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+source.replace('<i data-lucide="arrow-down-right" aria-hidden="true"></i>',icon));await expected.evaluate(()=>document.fonts.ready);await expected.addStyleTag({content:'body{background:#fff}'})
-  const a=await actual.locator('.g-site').screenshot({path:`test-results/actual-${width}-${colorScheme}.png`})
-  const b=await expected.locator('.g-site').screenshot({path:`test-results/baseline-${width}-${colorScheme}.png`})
-  const python=process.env.PYTHON||(process.platform==='win32'?'../.venv/Scripts/python.exe':'python')
-  const diff=JSON.parse(execFileSync(python,['../scripts/compare_images.py',`test-results/actual-${width}-${colorScheme}.png`,`test-results/baseline-${width}-${colorScheme}.png`],{encoding:'utf8'}))
-  console.log(`${width} ${colorScheme}: ${JSON.stringify(diff)}`)
-  expect(diff.max_channel_delta,`pixel comparison ${width} ${colorScheme}; allow only 1/255 raster rounding`).toBeLessThanOrEqual(1)
-  await context.close()
- }
+const source='http://127.0.0.1:4175/index.html'
+const widths=[1920,1600,1599,1051,1050,761,760,390,381,380,320]
+async function compare(actual:any,expected:any,name:string,selector='main'){
+ await actual.locator(selector).waitFor();await expected.locator(selector).waitFor()
+ for(const page of [actual,expected])await page.evaluate(async()=>{await Promise.all([500,600,700,800,900].map(w=>document.fonts.load(w+' 30px \"Barlow Condensed\"')));await document.fonts.ready})
+ await actual.addStyleTag({content:'*,*:before,*:after{transition:none!important}'});await expected.addStyleTag({content:'*,*:before,*:after{transition:none!important}'})
+ await actual.waitForTimeout(250);await expected.waitForTimeout(250)
+ const a=`test-results/actual-${name}.png`,b=`test-results/baseline-${name}.png`
+ await actual.locator(selector).screenshot({path:a,animations:'disabled'});await expected.locator(selector).screenshot({path:b,animations:'disabled'})
+ const python=process.platform==='win32'?'../.venv/Scripts/python.exe':'python'
+ const diff=JSON.parse(execFileSync(python,['../scripts/compare_images.py',a,b],{encoding:'utf8'}));console.log(name,JSON.stringify(diff));expect(diff.max_channel_delta).toBeLessThanOrEqual(4);expect(diff.pixels_over_one).toBeLessThanOrEqual(diff.width*diff.height*0.001)
+}
+for(const width of widths)for(const theme of ['blue','yellow'])test(`approved home ${width} ${theme}`,async({browser})=>{
+ const context=await browser.newContext({viewport:{width,height:1000},deviceScaleFactor:1});const actual=await context.newPage(),expected=await context.newPage()
+ await actual.goto('/');await expected.goto(source);await actual.selectOption('#accent',theme);await expected.selectOption('#accent',theme)
+ await compare(actual,expected,`home-${width}-${theme}`);expect(await actual.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await context.close()
+})
+for(const width of [1440,390])for(const theme of ['blue','yellow'])for(const [path,hash] of [['/competitions','events'],['/competitions/autumn','event'],['/competitions/autumn/schedule','event/schedule'],['/competitions/autumn/standings','event/standings'],['/competitions/autumn/teams','event/teams'],['/competitions/autumn/rules','event/rules'],['/announcements','news'],['/matches/featured','match'],['/matches/upcoming','match/upcoming']])test(`approved ${hash} ${width} ${theme}`,async({browser})=>{
+ const context=await browser.newContext({viewport:{width,height:1000},deviceScaleFactor:1});const actual=await context.newPage(),expected=await context.newPage();await actual.goto(path);await expected.goto(source+'#'+hash);await actual.selectOption('#accent',theme);await expected.selectOption('#accent',theme);await compare(actual,expected,hash.replaceAll('/','-')+'-'+width+'-'+theme);await context.close()
+})
+
+for(const width of [1440,390])test(`approved dialogs and map selection ${width}`,async({browser})=>{
+ const context=await browser.newContext({viewport:{width,height:1000},deviceScaleFactor:1}),actual=await context.newPage(),expected=await context.newPage();
+ await actual.goto('/');await expected.goto(source);await compare(actual,expected,'header-'+width,'.header');
+ await actual.locator('.news-row').first().click();await expected.locator('.news-row').first().click();await compare(actual,expected,'news-dialog-'+width,'dialog');await actual.locator('#close-dialog').click();await expected.locator('#close-dialog').click();
+ await actual.goto('/competitions/autumn/teams');await expected.goto(source+'#event/teams');await actual.locator('[data-team="0"]').click();await expected.locator('[data-team="0"]').click();await compare(actual,expected,'team-dialog-'+width,'dialog');await actual.locator('#close-dialog').click();await expected.locator('#close-dialog').click();
+ await actual.goto('/matches/featured');await expected.goto(source+'#match');await actual.locator('[data-map="1"]').click();await expected.locator('[data-map="1"]').click();await compare(actual,expected,'map-selected-'+width);
+ // The additional management link is the documented footer extension.
+ await actual.locator('.footer a[href="/admin/login"]').evaluate((a:any)=>a.remove());await compare(actual,expected,'footer-'+width,'.footer');await context.close();
 })

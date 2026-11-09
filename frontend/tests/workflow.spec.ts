@@ -1,5 +1,9 @@
 import {test,expect} from '@playwright/test'
 import {execFileSync} from 'node:child_process'
+
+// Optional base URL for isolated local acceptance servers.
+test.skip(process.env.E2E!=='1','需要显式启用独立验收库 E2E=1')
+test.use({baseURL:process.env.E2E_BASE_URL||'http://localhost:5173'})
 test('administrator creates event imports roster and publishes a schedule through UI',async({page})=>{
  test.setTimeout(45000)
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept())

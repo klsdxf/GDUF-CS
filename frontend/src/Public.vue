@@ -26,7 +26,7 @@ async function load(){
   if(page.value==='match'||page.value==='announcement'){
    data.value=await api('/'+(page.value==='match'?'matches':'announcements')+'/'+route.path.split('/')[2]);key=data.value.competition_id
   }
-  if(!key){c.value=null;data.value=null;return}
+  if(!key){c.value=null;home.value=null;data.value=null;return}
   c.value=await api('/competitions/'+key)
   if(isHome.value)home.value=await api('/competitions/'+key+'/home')
   else if(page.value==='schedule'){
@@ -50,10 +50,10 @@ onUnmounted(()=>{clearInterval(timer);document.removeEventListener('visibilitych
 <template>
 <div id="gduf-designs"><section data-variant="广金主场 · 观赛优先"><div class="g-site g-match">
 <div class="g-university"><span>GDUF <b>广东金融学院</b></span><span>学生社团赛事 / CAMPUS CS2</span></div>
-<header class="g-nav"><RouterLink class="g-brand" :to="base"><strong>广金主场<span>↗</span></strong><small>GDUF COUNTER-STRIKE 2</small></RouterLink><nav aria-label="主导航"><RouterLink v-for="n in nav" :to="base+n[1]" :class="{'g-active':(n[1]===''&&isHome)||page===n[1].slice(1)}">{{n[0]}}</RouterLink></nav><span class="g-season">{{c?.season||'GDUF CS2'}}</span></header>
+<header class="g-nav"><RouterLink class="g-brand" :to="c?base:'/'"><strong>广金主场<span>↗</span></strong><small>GDUF COUNTER-STRIKE 2</small></RouterLink><nav aria-label="主导航"><RouterLink v-for="n in nav" :to="c?base+n[1]:(n[1]?'/competitions':'/')" :class="{'g-active':(n[1]===''&&isHome)||page===n[1].slice(1)}">{{n[0]}}</RouterLink></nav><span class="g-season">{{c?.season||'GDUF CS2'}}</span></header>
 <div v-if="error" class="notice" role="alert">{{error}} <button class="g-button" @click="load">重试</button><small v-if="updated">上次更新 {{updated}}</small></div>
-<div v-if="loading&&!data&&!home" class="empty" aria-busy="true">正在加载赛事信息…</div>
-<Home v-if="isHome&&home&&c" :home="home" />
+<div v-if="loading&&!data&&!home&&!isHome" class="empty" aria-busy="true">正在加载赛事信息…</div>
+<Home v-if="isHome" :home="home" :loading="loading" :failed="!!error" />
 <main v-else class="detail">
  <h1>{{title[page]||'广金主场'}}</h1>
  <p v-if="!loading&&!c&&page!=='competitions'" class="empty">赛事尚未公布</p>

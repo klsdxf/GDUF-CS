@@ -1,7 +1,7 @@
 import os
 from datetime import datetime, timezone
 from uuid import uuid4
-from sqlalchemy import create_engine, event, String, DateTime, JSON, ForeignKey, UniqueConstraint, CheckConstraint
+from sqlalchemy import create_engine, event, String, DateTime, JSON, ForeignKey, UniqueConstraint, CheckConstraint, ForeignKeyConstraint, Index
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 def now():
@@ -60,6 +60,9 @@ class Registration(Base):
     description: Mapped[str] = mapped_column(default='')
     contact: Mapped[str] = mapped_column(String(200))
     logo: Mapped[str] = mapped_column(default='')
+    english_name: Mapped[str] = mapped_column(String(120), default='')
+    emblem_text: Mapped[str] = mapped_column(String(12), default='')
+    poster_title_lines: Mapped[list] = mapped_column(JSON, default=list)
     active: Mapped[bool] = mapped_column(default=True)
     version: Mapped[int] = mapped_column(default=1)
     __table_args__ = (UniqueConstraint('competition_id', 'code'),)
@@ -82,6 +85,9 @@ class RosterSnapshot(Base):
     name: Mapped[str]
     description: Mapped[str]
     logo: Mapped[str]
+    english_name: Mapped[str] = mapped_column(String(120), default='')
+    emblem_text: Mapped[str] = mapped_column(String(12), default='')
+    poster_title_lines: Mapped[list] = mapped_column(JSON, default=list)
 
 class Claim(Base):
     __tablename__ = 'active_member_claims'
@@ -177,3 +183,111 @@ class Audit(Base):
 def db_session():
     with Session.begin() as session:
         yield session
+
+
+class ResultPage(Base):
+    __tablename__ = 'competition_result_pages'
+    id: Mapped[str] = mapped_column(primary_key=True, default=uid)
+    competition_id: Mapped[str] = mapped_column(ForeignKey('competitions.id'), unique=True)
+    version: Mapped[int] = mapped_column(default=1)
+    config: Mapped[dict] = mapped_column(JSON, default=dict)
+    current_release_id: Mapped[str | None] = mapped_column(ForeignKey('result_releases.id', use_alter=True, name='fk_current_release'))
+
+class ResultPlacement(Base):
+    __tablename__ = 'result_placements'
+    competition_id: Mapped[str] = mapped_column(ForeignKey('competitions.id'))
+    id: Mapped[str] = mapped_column(primary_key=True, default=uid)
+    result_page_id: Mapped[str] = mapped_column(ForeignKey('competition_result_pages.id'))
+    registration_id: Mapped[str] = mapped_column(ForeignKey('registrations.id'))
+    team_display_version: Mapped[int]
+    rank_from: Mapped[int]
+    rank_to: Mapped[int]
+    data: Mapped[dict] = mapped_column(JSON, default=dict)
+    __table_args__ = (UniqueConstraint('result_page_id','registration_id'), CheckConstraint('rank_from >= 1 AND rank_to >= rank_from AND rank_to <= 32'),)
+
+class ResultPathMatch(Base):
+    __tablename__ = 'result_path_matches'
+    competition_id: Mapped[str] = mapped_column(ForeignKey('competitions.id'))
+    id: Mapped[str] = mapped_column(primary_key=True, default=uid)
+    result_page_id: Mapped[str] = mapped_column(ForeignKey('competition_result_pages.id'))
+    match_id: Mapped[str] = mapped_column(ForeignKey('matches.id'))
+    display_order: Mapped[int]
+    stage_label: Mapped[str] = mapped_column(default='')
+    __table_args__ = (UniqueConstraint('result_page_id','match_id'), UniqueConstraint('result_page_id','display_order'))
+
+class Sponsor(Base):
+    __tablename__ = 'sponsors'
+    id: Mapped[str] = mapped_column(primary_key=True, default=uid)
+    name: Mapped[str]
+    data: Mapped[dict] = mapped_column(JSON, default=dict)
+    active: Mapped[bool] = mapped_column(default=True)
+    version: Mapped[int] = mapped_column(default=1)
+
+class CompetitionPartner(Base):
+    __tablename__ = 'competition_partners'
+    id: Mapped[str] = mapped_column(primary_key=True, default=uid)
+    competition_id: Mapped[str] = mapped_column(ForeignKey('competitions.id'))
+    sponsor_id: Mapped[str] = mapped_column(ForeignKey('sponsors.id'))
+    tier: Mapped[str] = mapped_column(default='official')
+    data: Mapped[dict] = mapped_column(JSON, default=dict)
+    published: Mapped[bool] = mapped_column(default=False)
+    version: Mapped[int] = mapped_column(default=1)
+    __table_args__ = (UniqueConstraint('competition_id','sponsor_id'),)
+
+class Prize(Base):
+    __tablename__ = 'prizes'
+    id: Mapped[str] = mapped_column(primary_key=True, default=uid)
+    competition_id: Mapped[str] = mapped_column(ForeignKey('competitions.id'))
+    provider_partner_id: Mapped[str] = mapped_column(ForeignKey('competition_partners.id'))
+    name: Mapped[str]
+    data: Mapped[dict] = mapped_column(JSON, default=dict)
+    active: Mapped[bool] = mapped_column(default=True)
+    version: Mapped[int] = mapped_column(default=1)
+
+class PrizeAllocation(Base):
+    __tablename__ = 'prize_allocations'
+    competition_id: Mapped[str] = mapped_column(ForeignKey('competitions.id'))
+    id: Mapped[str] = mapped_column(primary_key=True, default=uid)
+    placement_id: Mapped[str] = mapped_column(ForeignKey('result_placements.id'))
+    prize_id: Mapped[str] = mapped_column(ForeignKey('prizes.id'))
+    quantity: Mapped[int]
+    data: Mapped[dict] = mapped_column(JSON, default=dict)
+    __table_args__ = (UniqueConstraint('placement_id','prize_id'), CheckConstraint('quantity > 0'))
+
+class ResultRelease(Base):
+    __tablename__ = 'result_releases'
+    id: Mapped[str] = mapped_column(primary_key=True, default=uid)
+    result_page_id: Mapped[str] = mapped_column(ForeignKey('competition_result_pages.id'))
+    competition_id: Mapped[str] = mapped_column(ForeignKey('competitions.id'))
+    release_number: Mapped[int]
+    status: Mapped[str] = mapped_column(default='published')
+    source_fingerprint: Mapped[str]
+    source_dependencies: Mapped[dict] = mapped_column(JSON)
+    public_snapshot: Mapped[dict] = mapped_column(JSON)
+    content_sha256: Mapped[str]
+    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    reason: Mapped[str]
+    idempotency_key: Mapped[str | None]
+    invalidated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    invalidation_reason: Mapped[str] = mapped_column(default='')
+    __table_args__ = (UniqueConstraint('result_page_id','release_number'), UniqueConstraint('result_page_id','idempotency_key'))
+
+# Enforce same-edition links in the database as well as the publishing service.
+for cls in (Registration,Stage,Match,ResultPage,ResultPlacement,CompetitionPartner,Prize,ResultRelease):
+    cls.__table__.append_constraint(UniqueConstraint('id','competition_id'))
+for cls, local, target in (
+    (ResultPlacement,'result_page_id','competition_result_pages'),
+    (ResultPlacement,'registration_id','registrations'),
+    (ResultPathMatch,'result_page_id','competition_result_pages'),
+    (ResultPathMatch,'match_id','matches'),
+    (Prize,'provider_partner_id','competition_partners'),
+    (PrizeAllocation,'placement_id','result_placements'),
+    (PrizeAllocation,'prize_id','prizes'),
+    (ResultRelease,'result_page_id','competition_result_pages')):
+    cls.__table__.append_constraint(ForeignKeyConstraint([local,'competition_id'],[target+'.id',target+'.competition_id']))
+ResultPlacement.__table__.append_constraint(ForeignKeyConstraint(['registration_id','team_display_version'],['roster_snapshots.registration_id','roster_snapshots.version']))
+
+ResultRelease.__table__.append_constraint(UniqueConstraint('id','result_page_id'))
+ResultPage.__table__.append_constraint(ForeignKeyConstraint(['current_release_id','id'],['result_releases.id','result_releases.result_page_id'],name='fk_release_belongs_to_page',use_alter=True))
+
+Index('uq_presenting_partner',CompetitionPartner.competition_id,unique=True,sqlite_where=CompetitionPartner.tier=='presenting',postgresql_where=CompetitionPartner.tier=='presenting')

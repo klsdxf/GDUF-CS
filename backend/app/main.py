@@ -22,7 +22,7 @@ public_locks = {}
 @app.middleware('http')
 async def read_cache(request, call_next):
     path=request.url.path
-    if request.method=='GET' and path.startswith('/api/v1/') and '/admin/' not in path and not path.endswith('/health'):
+    if request.method=='GET' and path.startswith('/api/v1/') and '/admin/' not in path and not path.endswith('/health') and '/results' not in path:
         key=str(request.url)
         if len(public_locks)>512:
             public_locks.clear()
@@ -60,7 +60,7 @@ async def integrity_error(request, exc):
 @app.middleware('http')
 async def private_headers(request, call_next):
     response = await call_next(request)
-    if '/admin/' in request.url.path:
+    if '/admin/' in request.url.path or '/results' in request.url.path:
         response.headers['Cache-Control'] = 'no-store'
     response.headers['X-Content-Type-Options'] = 'nosniff'
     return response
@@ -105,8 +105,8 @@ def logout(response: Response, session=Depends(authenticated), db: Session = Dep
     response.delete_cookie('session')
     return {'data': True}
 
-from . import roster, tournaments, results, public, content, page_checks
-for module in (roster, tournaments, results, public, content, page_checks):
+from . import roster, tournaments, results, public, content, page_checks, final_results
+for module in (roster, tournaments, results, public, content, page_checks, final_results):
     app.include_router(module.router)
 
 from pathlib import Path

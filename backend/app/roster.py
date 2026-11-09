@@ -52,6 +52,8 @@ def validate_roster(db, c, teams, mode, revision=False):
         seen_names.add(t.get('name'))
         if not t.get('contact') or len(t['contact']) > 200:
             err('联系方式必填且最多200字', '队长联系方式')
+        if len(t.get('english_name','')) > 120 or len(t.get('emblem_text','')) > 12 or len(t.get('poster_title_lines',[])) > 2 or any(not isinstance(x,str) or len(x)>120 for x in t.get('poster_title_lines',[])):
+            err('英文队名最多120字，徽章缩写最多12字，海报标题最多两行')
         members = t.get('members', [])
         regular = [m for m in members if m.get('role') == '正式']
         captains = [m for m in members if m.get('captain')]
@@ -88,11 +90,11 @@ def save_roster(db, c, teams, mode, revision=False):
         targets.append((team, t))
     db.flush()
     for team, t in targets:
-        for field in ('name', 'contact', 'description', 'logo'):
+        for field in ('name', 'contact', 'description', 'logo', 'english_name', 'emblem_text', 'poster_title_lines'):
             if field in t:
                 setattr(team, field, t[field])
         team.active = True
-        db.add(RosterSnapshot(registration_id=team.id,version=team.version,name=team.name,description=team.description,logo=team.logo))
+        db.add(RosterSnapshot(registration_id=team.id,version=team.version,name=team.name,description=team.description,logo=team.logo,english_name=team.english_name,emblem_text=team.emblem_text,poster_title_lines=team.poster_title_lines))
         for m in t['members']:
             db.add(Member(registration_id=team.id, version=team.version, **{k:m[k] for k in ('nickname','steam_id','role','captain')}))
             db.add(Claim(competition_id=c.id, steam_id=m['steam_id'], registration_id=team.id))

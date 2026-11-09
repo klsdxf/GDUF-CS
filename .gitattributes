@@ -1,1 +1,4 @@
 * text=auto eol=lf
+
+# Preserve the approved archive byte-for-byte for manifest verification.
+开发文档/最终排名更新/** -text -whitespace

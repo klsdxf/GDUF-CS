@@ -1,0 +1,312 @@
+[
+  {
+    "file": "audit-home-1280-win32.png",
+    "same_size": true,
+    "difference_bbox": null
+  },
+  {
+    "file": "audit-home-360-win32.png",
+    "same_size": true,
+    "difference_bbox": [
+      80,
+      90,
+      284,
+      103
+    ]
+  },
+  {
+    "file": "audit-home-390-win32.png",
+    "same_size": true,
+    "difference_bbox": [
+      87,
+      90,
+      307,
+      103
+    ]
+  },
+  {
+    "file": "audit-home-768-win32.png",
+    "same_size": true,
+    "difference_bbox": [
+      207,
+      29,
+      514,
+      93
+    ]
+  },
+  {
+    "file": "audit-news-1280-win32.png",
+    "same_size": true,
+    "difference_bbox": [
+      438,
+      40,
+      813,
+      93
+    ]
+  },
+  {
+    "file": "audit-news-360-win32.png",
+    "same_size": true,
+    "difference_bbox": [
+      80,
+      90,
+      284,
+      103
+    ]
+  },
+  {
+    "file": "audit-news-390-win32.png",
+    "same_size": true,
+    "difference_bbox": [
+      87,
+      90,
+      307,
+      103
+    ]
+  },
+  {
+    "file": "audit-news-768-win32.png",
+    "same_size": true,
+    "difference_bbox": [
+      210,
+      29,
+      528,
+      93
+    ]
+  },
+  {
+    "file": "audit-overview-1280-win32.png",
+    "same_size": true,
+    "difference_bbox": [
+      438,
+      40,
+      810,
+      93
+    ]
+  },
+  {
+    "file": "audit-overview-360-win32.png",
+    "same_size": true,
+    "difference_bbox": [
+      72,
+      90,
+      284,
+      117
+    ]
+  },
+  {
+    "file": "audit-overview-390-win32.png",
+    "same_size": true,
+    "difference_bbox": [
+      79,
+      90,
+      307,
+      117
+    ]
+  },
+  {
+    "file": "audit-overview-768-win32.png",
+    "same_size": true,
+    "difference_bbox": [
+      210,
+      29,
+      514,
+      93
+    ]
+  },
+  {
+    "file": "audit-rules-1280-win32.png",
+    "same_size": true,
+    "difference_bbox": [
+      438,
+      40,
+      810,
+      93
+    ]
+  },
+  {
+    "file": "audit-rules-360-win32.png",
+    "same_size": true,
+    "difference_bbox": [
+      72,
+      90,
+      284,
+      117
+    ]
+  },
+  {
+    "file": "audit-rules-390-win32.png",
+    "same_size": true,
+    "difference_bbox": [
+      79,
+      90,
+      307,
+      117
+    ]
+  },
+  {
+    "file": "audit-rules-768-win32.png",
+    "same_size": true,
+    "difference_bbox": [
+      210,
+      29,
+      514,
+      93
+    ]
+  },
+  {
+    "file": "audit-schedule-1280-win32.png",
+    "same_size": true,
+    "difference_bbox": [
+      438,
+      40,
+      810,
+      93
+    ]
+  },
+  {
+    "file": "audit-schedule-360-win32.png",
+    "same_size": true,
+    "difference_bbox": [
+      80,
+      90,
+      284,
+      117
+    ]
+  },
+  {
+    "file": "audit-schedule-390-win32.png",
+    "same_size": true,
+    "difference_bbox": [
+      87,
+      90,
+      307,
+      117
+    ]
+  },
+  {
+    "file": "audit-schedule-768-win32.png",
+    "same_size": true,
+    "difference_bbox": [
+      210,
+      29,
+      514,
+      93
+    ]
+  },
+  {
+    "file": "audit-score-1280-win32.png",
+    "same_size": true,
+    "difference_bbox": null
+  },
+  {
+    "file": "audit-score-360-win32.png",
+    "same_size": true,
+    "difference_bbox": [
+      72,
+      90,
+      284,
+      117
+    ]
+  },
+  {
+    "file": "audit-score-390-win32.png",
+    "same_size": true,
+    "difference_bbox": [
+      79,
+      90,
+      307,
+      117
+    ]
+  },
+  {
+    "file": "audit-score-768-win32.png",
+    "same_size": true,
+    "difference_bbox": [
+      210,
+      29,
+      514,
+      93
+    ]
+  },
+  {
+    "file": "audit-standings-1280-win32.png",
+    "same_size": true,
+    "difference_bbox": [
+      438,
+      40,
+      810,
+      93
+    ]
+  },
+  {
+    "file": "audit-standings-360-win32.png",
+    "same_size": true,
+    "difference_bbox": [
+      72,
+      90,
+      284,
+      117
+    ]
+  },
+  {
+    "file": "audit-standings-390-win32.png",
+    "same_size": true,
+    "difference_bbox": [
+      79,
+      90,
+      307,
+      117
+    ]
+  },
+  {
+    "file": "audit-standings-768-win32.png",
+    "same_size": true,
+    "difference_bbox": [
+      210,
+      29,
+      514,
+      93
+    ]
+  },
+  {
+    "file": "audit-teams-1280-win32.png",
+    "same_size": true,
+    "difference_bbox": [
+      438,
+      40,
+      810,
+      93
+    ]
+  },
+  {
+    "file": "audit-teams-360-win32.png",
+    "same_size": true,
+    "difference_bbox": [
+      80,
+      90,
+      284,
+      117
+    ]
+  },
+  {
+    "file": "audit-teams-390-win32.png",
+    "same_size": true,
+    "difference_bbox": [
+      87,
+      90,
+      307,
+      117
+    ]
+  },
+  {
+    "file": "audit-teams-768-win32.png",
+    "same_size": true,
+    "difference_bbox": [
+      210,
+      29,
+      514,
+      93
+    ]
+  }
+]

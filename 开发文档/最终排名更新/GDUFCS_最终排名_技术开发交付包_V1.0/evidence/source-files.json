@@ -1,0 +1,76 @@
+{
+  "captured_on": "2026-11-09",
+  "timezone": "Asia/Shanghai",
+  "project_path": "C:\\Users\\genev\\Desktop\\workspace\\GDUF CS",
+  "note": "Read-only source evidence; no commit/deployment assertion.",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "f772a79edc5c742635791729017c124b71e499736c2edbd22f3092385e4b10bf"
+    },
+    {
+      "path": "backend/app/db.py",
+      "sha256": "8a102317faa4fc5ef7a9d9944087174bc00916d74c06b0e8c6885314a08221c2"
+    },
+    {
+      "path": "backend/app/roster.py",
+      "sha256": "cdf4494f9ef8130179a20d7bccda912082f31bb19de9b0d5af3c3e8f3535b348"
+    },
+    {
+      "path": "backend/app/tournaments.py",
+      "sha256": "3c8f25be4ab6aea55bfc34062fe78cfe46b9eeb6938f510f91ccdc8275e44a6f"
+    },
+    {
+      "path": "backend/app/results.py",
+      "sha256": "f15fd153a00e1c97dd08236bd3fec93637440553516f63b34e1b91500827fdf2"
+    },
+    {
+      "path": "backend/app/public.py",
+      "sha256": "32b8f8813e05cf81c43e6ec52cc59be31978be4cfc58b3b8022c3700b3599c90"
+    },
+    {
+      "path": "backend/app/content.py",
+      "sha256": "1b34c35daebe85ef6e2a22975f494f38f126f489ff66dfffdcd084b7fd63031f"
+    },
+    {
+      "path": "backend/app/schemas.py",
+      "sha256": "346c152fa64fdbf63786c691f5db56164d24f14e7272a7298012ca2f72863392"
+    },
+    {
+      "path": "backend/app/security.py",
+      "sha256": "b6e7b8e6ef49674f0c5788b96e2f126ca26952ba24d4835351655c9e3324e026"
+    },
+    {
+      "path": "backend/app/main.py",
+      "sha256": "239209a02cafa4c8310484b80029aa012eee2cb1abe7412e265ef6f0dccb70b2"
+    },
+    {
+      "path": "backend/app/page_checks.py",
+      "sha256": "ab1cdd1f2e79d3bd1f3985c60b8dfde37a9159043c4a98cd307a489eea08e6a3"
+    },
+    {
+      "path": "frontend/src/Public.vue",
+      "sha256": "34d21c18703feda7ff5cf221e69c51d0812cbe895c1c9805987902310fb7a8c6"
+    },
+    {
+      "path": "frontend/src/main.ts",
+      "sha256": "69ac7a1bab6029e0c2cfee453410db30ee4357c0a6ec68ae2dfb0aa83907c6ce"
+    },
+    {
+      "path": "frontend/src/redesign/presentation.ts",
+      "sha256": "f8b0f321df819dc0eb40005f2fe98da222f75fbcfa98648ffb3c674e8d61b507"
+    },
+    {
+      "path": "frontend/src/redesign/data.ts",
+      "sha256": "a563e544ef322b6eb1ea7434850c362da499b5e0a9782f54a6479fa0f53e117d"
+    },
+    {
+      "path": "frontend/src/redesign/reference.css",
+      "sha256": "2d8c4b729a41de539ab4059dac697cb2ba5caaef6607adf4a229d0b3872e766f"
+    },
+    {
+      "path": "frontend/scripts/build-routing.mjs",
+      "sha256": "71a7d97b4d79c808c1fba5ef323ed14d81713369d7d11124178263c94d310063"
+    }
+  ]
+}

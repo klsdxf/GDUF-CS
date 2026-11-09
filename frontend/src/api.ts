@@ -1,6 +1,6 @@
 export let csrf = ''
-export async function api(path: string, method = 'GET', body?: any): Promise<any> {
-  const headers: Record<string,string> = {'X-CSRF-Token':csrf}
+export async function api(path: string, method = 'GET', body?: any, extraHeaders: Record<string,string> = {}): Promise<any> {
+  const headers: Record<string,string> = {'X-CSRF-Token':csrf,...extraHeaders}
   if(body && !(body instanceof FormData)) headers['Content-Type']='application/json'
   const response = await fetch('/api/v1'+path,{method,headers,credentials:'same-origin',body:body instanceof FormData?body:body?JSON.stringify(body):undefined})
   const result = await response.json()

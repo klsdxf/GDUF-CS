@@ -18,6 +18,7 @@ export function resolveLiveAction(rows:any[]=[],state='ready',matchId=''){
 }
 export function classifyPublicRoute(path:string,demo=false){
  const parts=path.split('/').slice(1)
+ if(/^\/results(?:\/[^/]+)?$/.test(path))return !demo||['/results','/results/autumn'].includes(path)
  if(['/', '/competitions','/announcements'].includes(path))return true
  if(/^\/(matches|announcements)\/[^/]+$/.test(path))return !demo||(parts[0]==='matches'?['featured','upcoming','upcoming-2'].includes(parts[1]!):/^[0-2]$/.test(parts[1]!))
  if(parts[0]!=='competitions'||!parts[1]||(demo&&!['autumn','spring','archive'].includes(parts[1])))return false

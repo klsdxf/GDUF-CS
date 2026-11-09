@@ -17,7 +17,7 @@ def public_c(db,key):
 
 def team_dto(db,t,version=None):
     snapshot=db.get(RosterSnapshot,(t.id,version or t.version))
-    return {'id':t.id,'competition_id':t.competition_id,'code':t.code,'name':snapshot.name if snapshot else t.name,'description':snapshot.description if snapshot else t.description,'logo':snapshot.logo if snapshot else t.logo,'members':[{'nickname':m.nickname,'role':m.role,'captain':m.captain} for m in db.scalars(select(Member).where(Member.registration_id==t.id,Member.version==(version or t.version)))]}
+    return {'id':t.id,'competition_id':t.competition_id,'code':t.code,'name':snapshot.name if snapshot else t.name,'english_name':snapshot.english_name if snapshot else t.english_name,'emblem_text':snapshot.emblem_text if snapshot else t.emblem_text,'poster_title_lines':snapshot.poster_title_lines if snapshot else t.poster_title_lines,'description':snapshot.description if snapshot else t.description,'logo':snapshot.logo if snapshot else t.logo,'members':[{'nickname':m.nickname,'role':m.role,'captain':m.captain} for m in db.scalars(select(Member).where(Member.registration_id==t.id,Member.version==(version or t.version)))]}
 
 def match_dto(db,m):
     out={k:getattr(m,k) for k in ('id','competition_id','stage_id','code','round','group','bracket','source_a','source_b','best_of','scheduled_at','status','confirmed','version')}

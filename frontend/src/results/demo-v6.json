@@ -1,0 +1,398 @@
+{
+  "schema_version": "visual-fixture-1.0",
+  "fictional": true,
+  "not_an_api_publish_payload": true,
+  "purpose": "V6 精确还原用独立赛后场景；不是数据库播种文件，不更改原秋季赛进行中示例。路径比赛仅含原型已有的比分信息，不补造逐图成绩。",
+  "reference_file": "../reference/index.html",
+  "navigation": {
+    "canonical_path": "/results",
+    "history_path": "/results/:slug",
+    "items": [
+      "首页",
+      "赛事",
+      "赛程",
+      "战队",
+      "最终排名",
+      "公告"
+    ]
+  },
+  "competition": {
+    "id": "demo-competition-autumn-results",
+    "slug": "autumn",
+    "name": "2026 秋季赛",
+    "season": "2026",
+    "state_label": "赛后示例"
+  },
+  "display": {
+    "seal_edition_label": "FALL 2026",
+    "seal_serial": "001",
+    "seal_mode": "monogram",
+    "motion_enabled": true,
+    "motion_controls_visible": false,
+    "material": "V6 champagne-gold / deep-blue enamel"
+  },
+  "champion_team_id": "demo-team-mf",
+  "placements": [
+    {
+      "id": "demo-placement-mf",
+      "team_id": "demo-team-mf",
+      "name": "木棉 FIVE",
+      "english_name": "KAPOK FIVE",
+      "emblem_text": "MF",
+      "logo_url": null,
+      "poster_title_lines": [
+        "KAPOK",
+        "FIVE"
+      ],
+      "rank_from": 1,
+      "rank_to": 1,
+      "display_order": 0,
+      "recipient_count": 5,
+      "eligibility_policy": "starters_only"
+    },
+    {
+      "id": "demo-placement-fs",
+      "team_id": "demo-team-fs",
+      "name": "金融风暴",
+      "english_name": "FINANCE STORM",
+      "emblem_text": "FS",
+      "logo_url": null,
+      "poster_title_lines": [
+        "FINANCE",
+        "STORM"
+      ],
+      "rank_from": 2,
+      "rank_to": 2,
+      "display_order": 1,
+      "recipient_count": 5,
+      "eligibility_policy": "starters_only"
+    },
+    {
+      "id": "demo-placement-na",
+      "team_id": "demo-team-na",
+      "name": "北苑竞技",
+      "english_name": "NORTH ARENA",
+      "emblem_text": "NA",
+      "logo_url": null,
+      "poster_title_lines": [
+        "NORTH",
+        "ARENA"
+      ],
+      "rank_from": 3,
+      "rank_to": 3,
+      "display_order": 2,
+      "recipient_count": 5,
+      "eligibility_policy": "starters_only"
+    },
+    {
+      "id": "demo-placement-ot",
+      "team_id": "demo-team-ot",
+      "name": "不加班战队",
+      "english_name": "NO OVERTIME",
+      "emblem_text": "OT",
+      "logo_url": null,
+      "poster_title_lines": [
+        "NO",
+        "OVERTIME"
+      ],
+      "rank_from": 4,
+      "rank_to": 4,
+      "display_order": 3,
+      "recipient_count": 5,
+      "eligibility_policy": "starters_only"
+    },
+    {
+      "id": "demo-placement-zy",
+      "team_id": "demo-team-zy",
+      "name": "致远 Gaming",
+      "english_name": "ZHIYUAN GAMING",
+      "emblem_text": "ZY",
+      "logo_url": null,
+      "poster_title_lines": [
+        "ZHIYUAN",
+        "GAMING"
+      ],
+      "rank_from": 5,
+      "rank_to": 8,
+      "display_order": 4,
+      "recipient_count": 5,
+      "eligibility_policy": "starters_only"
+    },
+    {
+      "id": "demo-placement-md",
+      "team_id": "demo-team-md",
+      "name": "明德 United",
+      "english_name": "MINGDE UNITED",
+      "emblem_text": "MD",
+      "logo_url": null,
+      "poster_title_lines": [
+        "MINGDE",
+        "UNITED"
+      ],
+      "rank_from": 5,
+      "rank_to": 8,
+      "display_order": 5,
+      "recipient_count": 5,
+      "eligibility_policy": "starters_only"
+    },
+    {
+      "id": "demo-placement-ff",
+      "team_id": "demo-team-ff",
+      "name": "五排事务所",
+      "english_name": "FIVE FRIENDS",
+      "emblem_text": "FF",
+      "logo_url": null,
+      "poster_title_lines": [
+        "FIVE",
+        "FRIENDS"
+      ],
+      "rank_from": 5,
+      "rank_to": 8,
+      "display_order": 6,
+      "recipient_count": 5,
+      "eligibility_policy": "starters_only"
+    },
+    {
+      "id": "demo-placement-lr",
+      "team_id": "demo-team-lr",
+      "name": "最后一局",
+      "english_name": "LAST ROUND",
+      "emblem_text": "LR",
+      "logo_url": null,
+      "poster_title_lines": [
+        "LAST",
+        "ROUND"
+      ],
+      "rank_from": 5,
+      "rank_to": 8,
+      "display_order": 7,
+      "recipient_count": 5,
+      "eligibility_policy": "starters_only"
+    }
+  ],
+  "champion_path": [
+    {
+      "id": "demo-match-quarter",
+      "label": "四分之一决赛",
+      "best_of": 3,
+      "a_team_id": "demo-team-mf",
+      "b_team_id": "demo-team-ff",
+      "winner_team_id": "demo-team-mf",
+      "wins_a": 2,
+      "wins_b": 0,
+      "maps": null,
+      "maps_status": "not_provided_in_reference"
+    },
+    {
+      "id": "demo-match-semi",
+      "label": "半决赛",
+      "best_of": 3,
+      "a_team_id": "demo-team-mf",
+      "b_team_id": "demo-team-na",
+      "winner_team_id": "demo-team-mf",
+      "wins_a": 2,
+      "wins_b": 1,
+      "maps": null,
+      "maps_status": "not_provided_in_reference"
+    },
+    {
+      "id": "demo-match-final",
+      "label": "总决赛",
+      "best_of": 5,
+      "a_team_id": "demo-team-mf",
+      "b_team_id": "demo-team-fs",
+      "winner_team_id": "demo-team-mf",
+      "wins_a": 3,
+      "wins_b": 1,
+      "maps": [
+        {
+          "map_name": "Inferno",
+          "score_a": 13,
+          "score_b": 8
+        },
+        {
+          "map_name": "Mirage",
+          "score_a": 9,
+          "score_b": 13
+        },
+        {
+          "map_name": "Ancient",
+          "score_a": 13,
+          "score_b": 10
+        },
+        {
+          "map_name": "Nuke",
+          "score_a": 13,
+          "score_b": 7
+        }
+      ]
+    }
+  ],
+  "final_match_id": "demo-match-final",
+  "prizes": [
+    {
+      "id": "demo-prize-h1",
+      "model_code": "H1",
+      "name": "H1 电竞耳机",
+      "unit": "副",
+      "category": "equipment",
+      "builtin_illustration_key": "headset",
+      "provider_partner_id": "demo-partner-nexcore"
+    },
+    {
+      "id": "demo-prize-k75",
+      "model_code": "K75",
+      "name": "K75 机械键盘",
+      "unit": "把",
+      "category": "equipment",
+      "builtin_illustration_key": "keyboard",
+      "provider_partner_id": "demo-partner-nexcore"
+    },
+    {
+      "id": "demo-prize-m4",
+      "model_code": "M4",
+      "name": "M4 无线鼠标",
+      "unit": "只",
+      "category": "equipment",
+      "builtin_illustration_key": "mouse",
+      "provider_partner_id": "demo-partner-nexcore"
+    },
+    {
+      "id": "demo-prize-badge",
+      "model_code": "BADGE",
+      "name": "赛事纪念徽章",
+      "unit": "枚",
+      "category": "commemorative",
+      "builtin_illustration_key": null,
+      "provider_partner_id": "demo-partner-nexcore"
+    }
+  ],
+  "allocations": [
+    {
+      "team_id": "demo-team-mf",
+      "prize_id": "demo-prize-badge",
+      "quantity": 5,
+      "distribution": "per_recipient",
+      "per_recipient_quantity": 1
+    },
+    {
+      "team_id": "demo-team-mf",
+      "prize_id": "demo-prize-h1",
+      "quantity": 5,
+      "distribution": "per_recipient",
+      "per_recipient_quantity": 1
+    },
+    {
+      "team_id": "demo-team-fs",
+      "prize_id": "demo-prize-badge",
+      "quantity": 5,
+      "distribution": "per_recipient",
+      "per_recipient_quantity": 1
+    },
+    {
+      "team_id": "demo-team-fs",
+      "prize_id": "demo-prize-k75",
+      "quantity": 5,
+      "distribution": "per_recipient",
+      "per_recipient_quantity": 1
+    },
+    {
+      "team_id": "demo-team-na",
+      "prize_id": "demo-prize-badge",
+      "quantity": 5,
+      "distribution": "per_recipient",
+      "per_recipient_quantity": 1
+    },
+    {
+      "team_id": "demo-team-na",
+      "prize_id": "demo-prize-m4",
+      "quantity": 5,
+      "distribution": "per_recipient",
+      "per_recipient_quantity": 1
+    },
+    {
+      "team_id": "demo-team-ot",
+      "prize_id": "demo-prize-badge",
+      "quantity": 5,
+      "distribution": "per_recipient",
+      "per_recipient_quantity": 1
+    },
+    {
+      "team_id": "demo-team-zy",
+      "prize_id": "demo-prize-badge",
+      "quantity": 5,
+      "distribution": "per_recipient",
+      "per_recipient_quantity": 1
+    },
+    {
+      "team_id": "demo-team-md",
+      "prize_id": "demo-prize-badge",
+      "quantity": 5,
+      "distribution": "per_recipient",
+      "per_recipient_quantity": 1
+    },
+    {
+      "team_id": "demo-team-ff",
+      "prize_id": "demo-prize-badge",
+      "quantity": 5,
+      "distribution": "per_recipient",
+      "per_recipient_quantity": 1
+    },
+    {
+      "team_id": "demo-team-lr",
+      "prize_id": "demo-prize-badge",
+      "quantity": 5,
+      "distribution": "per_recipient",
+      "per_recipient_quantity": 1
+    }
+  ],
+  "partners": [
+    {
+      "id": "demo-partner-nexcore",
+      "tier": "presenting",
+      "name": "核境",
+      "english_name": "NEXCORE",
+      "builtin_mark_key": "nexcore",
+      "category": "首席赞助商",
+      "description": "核境 NEXCORE 是本设计设定的电竞外设品牌，为示例赛事提供前三名全队装备及参赛纪念徽章。",
+      "official_url": null
+    },
+    {
+      "id": "demo-partner-frame",
+      "tier": "official",
+      "name": "帧界",
+      "english_name": "FRAME",
+      "category": "显示设备伙伴",
+      "official_url": null
+    },
+    {
+      "id": "demo-partner-fizz",
+      "tier": "official",
+      "name": "沸点",
+      "english_name": "FIZZ",
+      "category": "饮品支持伙伴",
+      "official_url": null
+    },
+    {
+      "id": "demo-partner-linkup",
+      "tier": "official",
+      "name": "联序",
+      "english_name": "LINKUP",
+      "category": "网络支持伙伴",
+      "official_url": null
+    },
+    {
+      "id": "demo-partner-replay",
+      "tier": "official",
+      "name": "回响",
+      "english_name": "REPLAY",
+      "category": "赛事内容伙伴",
+      "official_url": null
+    }
+  ],
+  "support_totals": {
+    "equipment": 15,
+    "commemorative": 40
+  },
+  "license_notice": "字体见 ../assets/OFL.txt；SVG 是本方案内联示意；所有品牌/赛事结果均为虚构。"
+}

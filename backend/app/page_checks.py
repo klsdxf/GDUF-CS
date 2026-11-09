@@ -14,7 +14,11 @@ def page_check(x_original_uri: str = Header(default=''), db: Session = Depends(d
     if '%' in path or '//' in path or any(p in ('.', '..') for p in path.split('/')):
         return Response(status_code=403)
     try:
-        if path in ('/', '/competitions', '/announcements'):
+        if path in ('/', '/competitions', '/announcements', '/results'):
+            return Response(status_code=204)
+        if re.fullmatch(r'/results/[^/]+', path):
+            from .final_results import public_result
+            public_result(path.split('/')[2], db)
             return Response(status_code=204)
         m = re.fullmatch(r'/(matches|announcements)/([^/]+)', path)
         if m:

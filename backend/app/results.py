@@ -88,7 +88,7 @@ def confirm(key:str,payload:dict,db:Session=Depends(db_session)):
 def revise_preview(key:str,payload:dict,db:Session=Depends(db_session)):
     m,c=match_locked(db,key)
     affected=downstream(db,m)
-    return {'data':{'result':calculate(m,payload,c),'affected':[serialize(x) for x in affected],'blocking':[x.id for x in affected if x.confirmed or x.status=='ongoing']}}
+    return {'data':{'result':calculate(m,payload,c),'affected':[serialize(x) for x in affected],'blocking':[x.id for x in affected if x.confirmed or x.status=='ongoing'],'affected_releases':[r.id for r in db.scalars(select(ResultRelease).where(ResultRelease.competition_id==c.id,ResultRelease.status=='published'))]}}
 
 @router.post('/matches/{key}/result/revise')
 def revise(key:str,payload:dict,db:Session=Depends(db_session)):

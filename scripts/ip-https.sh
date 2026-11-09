@@ -44,7 +44,7 @@ case "$operation" in
     echo "HTTPS 已启用：https://$public_ip/；下一步执行 install-timer 配置自动续期"
     ;;
   renew)
-    compose run --rm --no-deps -T certbot renew --cert-name gduf-ip --non-interactive
+    compose run --rm --no-deps -T certbot renew --non-interactive
     compose exec -T edge nginx -t
     compose exec -T edge nginx -s reload
     ;;

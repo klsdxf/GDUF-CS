@@ -73,6 +73,16 @@ jobs:
           bash scripts/restore.sh backups/ci EMPTY_DATABASE_ONLY
           docker compose run --rm -T --no-deps api sha256sum /app/storage/media/acceptance.webp | cut -d' ' -f1 > /tmp/restored-image.sha
           diff /tmp/source-image.sha /tmp/restored-image.sha
+      - name: Verify domain HTTPS and backend origin switch
+        run: |
+          bash -n scripts/domain-https.sh
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=www.example.test -addext subjectAltName=DNS:www.example.test -keyout /tmp/domain-test.key -out /tmp/domain-test.crt
+          docker run --rm -i -v gduf_ci_source_ip_certificates:/certs nginx:1.27-alpine sh -c 'mkdir -p /certs/live/gduf-domain; cat > /certs/live/gduf-domain/fullchain.pem' < /tmp/domain-test.crt
+          docker run --rm -i -v gduf_ci_source_ip_certificates:/certs nginx:1.27-alpine sh -c 'cat > /certs/live/gduf-domain/privkey.pem' < /tmp/domain-test.key
+          printf 'PUBLIC_ORIGIN=https://ci.invalid\n' > .env
+          bash scripts/domain-https.sh enable www.example.test
+          curl --fail --retry 5 --retry-connrefused --noproxy '*' --cacert /tmp/domain-test.crt --connect-to www.example.test:443:127.0.0.1:443 https://www.example.test/api/v1/health
+          docker compose exec -T api python -c "import os; assert os.environ['PUBLIC_ORIGIN'] == 'https://www.example.test'"
       - name: Deployment logs
         if: failure()
         run: docker compose logs --tail=100

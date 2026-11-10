@@ -1,0 +1,15 @@
+{
+  "seed_preview_no_business_writes": true,
+  "seed_apply": true,
+  "logo_preview": true,
+  "logo_apply": true,
+  "logo_repeat_noop": true,
+  "seed_repeat_preserves_logo": true,
+  "teams": 4,
+  "champion": "Poppin'Party",
+  "support_totals": {
+    "equipment": 15,
+    "commemorative": 20
+  },
+  "environment": "independent local SQLite; not production"
+}

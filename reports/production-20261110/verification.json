@@ -1,0 +1,29 @@
+{
+  "checked_at": "2026-11-10T09:13:24.935Z",
+  "site": "https://www.gdufcs.fun",
+  "health": "ok",
+  "http_status": 200,
+  "champion": "Poppin'Party",
+  "teams": 4,
+  "competition_status": "ongoing",
+  "support_totals": {
+    "equipment": 15,
+    "commemorative": 20
+  },
+  "logo": "/media/poppin-party-f85a459c12e8.webp",
+  "logo_http_status": 200,
+  "release_id": "94d67f80-be10-4ef8-ab70-7fa323a12248",
+  "first_hover": {
+    "rx": "7.6310936935566085deg",
+    "ry": "-18.790251313158343deg"
+  },
+  "second_hover": {
+    "rx": "4.262626806396614deg",
+    "ry": "-11.089290422511603deg"
+  },
+  "history_link": true,
+  "search": true,
+  "award_switch": true,
+  "mobile_overflow": false,
+  "page_errors": []
+}

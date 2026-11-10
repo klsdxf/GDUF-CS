@@ -2,7 +2,7 @@
 import {ref,computed,watch,nextTick,onMounted,onUnmounted} from 'vue'
 import {useRoute,useRouter} from 'vue-router'
 import {api} from './api'
-import {demoData,render,score,teamName,awards,type ResultDTO} from './results/render'
+import {render,score,teamName,awards,type ResultDTO} from './results/render'
 import {escape as e,updatePageMeta,liveUrl} from './redesign/presentation'
 import './results/reference-v6.css'
 import css from './results/reference-v6.css?raw'
@@ -11,13 +11,13 @@ const props=defineProps<{previewData?:ResultDTO}>()
 const emit=defineEmits<{competition:[value:any]}>()
 const route=useRoute(),router=useRouter(),root=ref<HTMLElement>(),dialog=ref<HTMLDialogElement>()
 const data=ref<ResultDTO|null>(null),loading=ref(true),error=ref(''),missing=ref(false),selected=ref(0),query=ref(''),title=ref(''),body=ref('')
-const demo=!props.previewData&&(import.meta.env.VITE_PUBLIC_DATA_MODE||'demo')==='demo'
-const html=computed(()=>data.value?render(data.value,selected.value,demo):'')
+const demo=!props.previewData&&(import.meta.env.VITE_PUBLIC_DATA_MODE||'api')==='demo'
+const html=computed(()=>data.value?render(data.value,selected.value,{visualVariant:'v6',context:demo?'reference':props.previewData?'admin-preview':'public'}):'')
 let sequence=0,opener:HTMLElement|null=null,dispose=()=>{}
 let syncSequence=0,unmounted=false
 async function load(){const id=++sequence;loading.value=true;error.value='';missing.value=false;data.value=null
  try{if(props.previewData)data.value=props.previewData
- else if(demo){if(route.params.pathMatch&&route.path!=='/results'&&route.path!=='/results/autumn')throw Object.assign(new Error('结果不存在'),{status:404});data.value=demoData()}
+ else if(import.meta.env.VITE_PUBLIC_DATA_MODE==='demo'&&demo){if(route.params.pathMatch&&route.path!=='/results'&&route.path!=='/results/autumn')throw Object.assign(new Error('结果不存在'),{status:404});data.value=(await import('./results/demo-data')).demoData()}
  else {const slug=route.path.split('/')[2];const d=await api(slug?'/competitions/'+encodeURIComponent(slug)+'/results':'/results/latest');if(id!==sequence)return;data.value=d}
  emit('competition',data.value?.competition||null)
  updatePageMeta(route.path,false,'最终排名'+(data.value?' · '+data.value.competition.name:''))
@@ -40,14 +40,14 @@ function close(){dialog.value?.close();opener?.focus()}
 async function replay(){if(!data.value)return;const rows=demo?[]:await api('/competitions/'+encodeURIComponent(data.value.competition.slug)+'/live');await open('赛事回顾',rows.filter((r:any)=>liveUrl(r.replay_url)).map((r:any)=>`<p><a href="${e(liveUrl(r.replay_url))}" target="_blank" rel="noopener">观看回放 ↗</a></p>`).join('')||'<h2>精彩，留给回放。</h2><p>本届暂无已发布回放。</p>')}
 function click(ev:MouseEvent){const b=(ev.target as HTMLElement).closest<HTMLElement>('button');if(!b||!data.value)return;const d=data.value
  if(b.dataset.award!==undefined){selected.value=Number(b.dataset.award);nextTick(()=>root.value?.querySelector<HTMLElement>('#award-tab-'+selected.value)?.focus())}
- if(b.dataset.match){const m=[d.final_match,...d.champion_path].find(m=>m.id===b.dataset.match);open(m.label||'决赛逐图赛果',`<h2>${e(teamName(d,m.a_team_id))} <span class="modal-score">${e(score(m))}</span> ${e(teamName(d,m.b_team_id))}</h2><p>BO${m.best_of}${demo?' · 赛后示例':''}</p>`+(m.maps||[]).map((x:any)=>`<div class="map-detail"><span>${e(x.map_name)}</span><b>${x.score_a} : ${x.score_b}</b></div>`).join('')+(!m.maps?.length?'<p>暂无逐图成绩</p>':'')+(!demo?`<p><a href="/matches/${e(m.id)}">打开比赛详情 ↗</a></p>`:''),b)}
+ if(b.dataset.match){const m=[d.final_match,...d.champion_path].find(m=>m.id===b.dataset.match);open(m.label||'决赛逐图赛果',`<h2>${e(teamName(d,m.a_team_id))} <span class="modal-score">${e(score(m))}</span> ${e(teamName(d,m.b_team_id))}</h2><p>BO${m.best_of}${demo?' · 赛后示例':''}</p>`+(m.maps||[]).map((x:any)=>`<div class="map-detail"><span>${e(x.map_name)}</span><b>${x.score_a} : ${x.score_b}</b></div>`).join('')+(!m.maps?.length?'<p>暂无逐图成绩</p>':'')+(!demo&&m.detail_url?`<p><a href="${e(m.detail_url)}">打开比赛详情 ↗</a></p>`:''),b)}
  if(b.dataset.prize){const p=d.placements.find(p=>p.id===b.dataset.prize);open('奖品详情',`<h2>${e(p.team.name)}</h2>`+awards(d,p).map(({z,a})=>`<p>${e(z.name)} × ${a.quantity} ${e(z.unit)}<br>${e(z.description||'')}</p>`).join(''),b)}
  if(b.dataset.dialog==='partner'){const p=d.presenting_partner;open('合作支持详情',`<h2>${e(p.name)} ${e(p.english_name)}</h2><p>${e(p.introduction||p.description||p.support_description)}</p>`+(p.official_url?`<a href="${e(p.official_url)}" target="_blank" rel="noopener">品牌官网 ↗</a>`:''),b)}
 }
 function keys(ev:KeyboardEvent){const t=ev.target as HTMLElement;if(!t.matches('[data-award]'))return;const tabs=Array.from(root.value!.querySelectorAll<HTMLElement>('[data-award]'));let i=tabs.indexOf(t);if(ev.key==='Home')i=0;else if(ev.key==='End')i=tabs.length-1;else if(ev.key==='ArrowLeft')i=(i+tabs.length-1)%tabs.length;else if(ev.key==='ArrowRight')i=(i+1)%tabs.length;else return;ev.preventDefault();ev.stopPropagation();tabs[i]?.click()}
 async function download(){if(!data.value)return;const d=data.value
  // Build solely from the public DTO, never clone the app, cookies or administration DOM.
- const variants=d.placements.filter(p=>p.rank_from<=3).map((_,i)=>render(d,i,demo));let styles=css
+ const variants=d.placements.filter(p=>p.rank_from<=3).map((_,i)=>render(d,i,{visualVariant:'v6',context:demo?'reference':'offline'}));let styles=css
  styles+='\n'+await (await fetch('/redesign/assets/fonts.css')).text()
  const urls=[...new Set(Array.from(styles.matchAll(/url\(['"]?([^)'"\s]+)['"]?\)/g),m=>m[1]!))]
  const toData=async(url:string)=>{const blob=await(await fetch(url)).blob();return await new Promise<string>(resolve=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.readAsDataURL(blob)})}

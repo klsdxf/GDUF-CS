@@ -2,7 +2,7 @@ import io
 import os
 from pathlib import Path
 from urllib.parse import urlparse
-from datetime import datetime
+from datetime import datetime, timezone
 from PIL import Image, UnidentifiedImageError
 from fastapi import APIRouter, Depends, UploadFile, File
 from sqlalchemy import select
@@ -31,12 +31,13 @@ def list_announcements(key:str,db:Session=Depends(db_session)):
 
 def announcement_save(db,a,payload):
     if not payload.get('title',a.title) or not payload.get('body',a.body):fail('CONTENT','标题和正文必填')
-    for k in ('title','body','published','pinned'):
+    if len(payload.get('category_label',''))>100:fail('CONTENT','公告分类最多100字',422)
+    for k in ('title','body','published','pinned','category_label','display_order'):
         if k in payload:setattr(a,k,payload[k])
     if payload.get('publish_at'):
         dt=datetime.fromisoformat(payload['publish_at'])
         if not dt.tzinfo:fail('TIMEZONE','发布时间需带时区')
-        a.publish_at=dt
+        a.publish_at=dt.astimezone(timezone.utc)
     db.add(a);db.flush();audit(db,'announcement.save',a.id,{'title':a.title})
     return {'data':serialize(a)}
 

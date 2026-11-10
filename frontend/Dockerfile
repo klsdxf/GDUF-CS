@@ -3,7 +3,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
-ARG VITE_PUBLIC_DATA_MODE=demo
+ARG VITE_PUBLIC_DATA_MODE=api
 ENV VITE_PUBLIC_DATA_MODE=$VITE_PUBLIC_DATA_MODE
 RUN npm run build
 FROM nginx:1.27-alpine

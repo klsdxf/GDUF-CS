@@ -4,13 +4,14 @@ import json
 from collections import defaultdict
 from copy import deepcopy
 from fastapi import APIRouter, Depends, Header
-from sqlalchemy import select, delete, update, func, event, inspect
+from sqlalchemy import select, delete, update, func, event, inspect, and_, or_
 from sqlalchemy.orm import Session as ORMSession
 from .db import *
 from .roster import competition, serialize, audit
 from .security import authenticated, fail
 from .schemas import ResultDraftWrite, ResultPlacementsWrite, ResultPathWrite, ResultAllocationsWrite, ResultPublishWrite
 from .public import team_dto, match_dto, c_dto
+from . import test_rankings
 
 router = APIRouter(prefix='/api/v1')
 admin = APIRouter(prefix='/admin', dependencies=[Depends(authenticated)])
@@ -46,13 +47,20 @@ def placements(db, p):
     return list(db.scalars(select(ResultPlacement).where(ResultPlacement.result_page_id == p.id).order_by(ResultPlacement.rank_from,ResultPlacement.id)))
 
 def sources(db, c, p):
-    return {'competition': {k:getattr(c,k) for k in ('id','published','status','config')},
-            'matches':[{k:getattr(m,k) for k in ('id','stage_id','a','b','winner','result','confirmed','published','status','version','rosters')} for m in sorted(rows(db,Match,c.id),key=lambda x:x.id)],
-            'stages':[serialize(s) for s in sorted(rows(db,Stage,c.id),key=lambda x:x.id)],
-            'draft':{'version':p.version,'config':p.config},
+    ps=placements(db,p)
+    return {'competition': {k:getattr(c,k) for k in ('id','published','status','config','data_origin')},
+            'matches': [serialize(m) for m in sorted(rows(db,Match,c.id),key=lambda x:x.id)] if p.result_kind=='official' else [],
+            'stages': [serialize(s) for s in sorted(rows(db,Stage,c.id),key=lambda x:x.id)] if p.result_kind=='official' else [],
+            'test_matches':[serialize(m) for m in test_rankings.matches(db,p)] if p.result_kind=='test' else [],
+            'teams':[{'id':t.id,'active':t.active} for t in sorted(rows(db,Registration,c.id),key=lambda x:x.id)],
+            'snapshots':[serialize(db.get(RosterSnapshot,(r.registration_id,r.team_display_version))) for r in ps],
+            'draft':{'version':p.version,'config':p.config,'result_kind':p.result_kind},
+            'placements':[serialize(r) for r in ps],
+            'allocations':[serialize(a) for a in db.scalars(select(PrizeAllocation).where(PrizeAllocation.competition_id==c.id).order_by(PrizeAllocation.id))],
             'partners':[serialize(x) for x in sorted(rows(db,CompetitionPartner,c.id),key=lambda x:x.id)],
             'sponsors':[serialize(db.get(Sponsor,x.sponsor_id)) for x in sorted(rows(db,CompetitionPartner,c.id),key=lambda x:x.id)],
             'prizes':[serialize(x) for x in sorted(rows(db,Prize,c.id),key=lambda x:x.id)]}
+
 
 def public_team(db, t, version):
     s = db.get(RosterSnapshot,(t.id,version))
@@ -65,7 +73,7 @@ def public_match(db, m):
     dto=match_dto(db,m)
     return {**{k:dto[k] for k in ('id','version','best_of','teams','status')},'a_team_id':m.a,'b_team_id':m.b,'winner_team_id':m.winner,
             'result_type':m.result.get('result_type','normal'),'wins_a':m.result.get('wins_a'), 'wins_b':m.result.get('wins_b'),
-            'maps':m.result.get('maps',[]),'reason':m.result.get('reason','')}
+            'maps':m.result.get('maps',[]),'reason':m.result.get('reason',''),'source_kind':'match','detail_url':'/matches/'+m.id}
 
 def preview(db,c,p):
     ps=placements(db,p); out=[]
@@ -85,10 +93,12 @@ def preview(db,c,p):
     for x in db.scalars(select(ResultPathMatch).where(ResultPathMatch.result_page_id==p.id).order_by(ResultPathMatch.display_order)):
         path.append({**public_match(db,same(db,Match,x.match_id,c.id)),'label':x.stage_label})
     final=same(db,Match,p.config['final_match_id'],c.id) if p.config.get('final_match_id') else None
+    final_dto=public_match(db,final) if final else None
+    if p.result_kind=='test':final_dto,path=test_rankings.preview_matches(db,p)
     champion=next((r['team'] for r in out if r['rank_from']==r['rank_to']==1),None)
     totals={k:sum(a['quantity'] for a in allocations if any(z['id']==a['prize_id'] and z.get('category')==k for z in prizes)) for k in ('equipment','commemorative')}
     return {'schema_version':'1.0','competition':c_dto(c),'display':p.config.get('display_meta',{}),'champion':{**champion,'seal_mode':p.config.get('seal_mode','monogram')} if champion else None,
-            'placements':out,'final_match':public_match(db,final) if final else None,'champion_path':path,'prizes':prizes,'allocations':allocations,
+            'placements':out,'final_match':final_dto,'champion_path':path,'prizes':prizes,'allocations':allocations,
             'presenting_partner':next((x for x in partners if x['tier']=='presenting'),None),'official_partners':[x for x in partners if x['tier']=='official'], 'support_totals':totals}
 
 def final_match(db,c,p):
@@ -117,6 +127,11 @@ def save_draft(key:str,payload:ResultDraftWrite,db:Session=Depends(db_session)):
     payload=payload.model_dump(exclude_unset=True)
     c,p=page(db,key,True)
     bump(db,p,payload.get('expected_version'))
+    kind=payload.get('result_kind') or p.result_kind
+    if kind=='test' and c.data_origin!='test':fail('TEST_MODE_REQUIRED','正式赛事不能创建测试排名',422)
+    if kind!=p.result_kind and (p.current_release_id or placements(db,p) or test_rankings.matches(db,p)):
+        fail('LOCKED','已有名次、对局或公开版本时不能直接切换排名类型',409)
+    p.result_kind=kind
     allowed=('final_stage_id','final_match_id','third_place_match_id','ranking_method','rules_version','display_meta','seal_mode')
     p.config={k:v for k,v in payload.items() if k in allowed}
     for field,cls in [('final_stage_id',Stage),('final_match_id',Match),('third_place_match_id',Match)]:
@@ -148,6 +163,10 @@ def replace_placements(db,c,p,items,calculated=False):
 @admin.post('/competitions/{key}/final-results/calculate')
 def calculate_rankings(key:str,payload:dict,db:Session=Depends(db_session)):
     c,p=page(db,key);bump(db,p,payload.get('expected_version'))
+    if p.result_kind=='test':
+        replace_placements(db,c,p,test_rankings.ranking_items(db,c,p),calculated=True)
+        audit(db,'final_results.test_calculate',p.id,{})
+        return {'data':serialize(p)}
     s,f,ms=final_match(db,c,p)
     p.config={**p.config,'final_match_id':f.id,'ranking_method':s.type,'rules_version':'graph-v1'}
     loser=lambda m:m.b if m.winner==m.a else m.a
@@ -196,7 +215,9 @@ def save_placements(key:str,payload:ResultPlacementsWrite,db:Session=Depends(db_
 @admin.put('/competitions/{key}/final-results/path')
 def save_path(key:str,payload:ResultPathWrite,db:Session=Depends(db_session)):
     payload=payload.model_dump(exclude_unset=True)
-    c,p=page(db,key);bump(db,p,payload.get('expected_version'))
+    c,p=page(db,key)
+    if p.result_kind=='test':fail('TEST_MODE_REQUIRED','测试路径请在独立对局中维护',422)
+    bump(db,p,payload.get('expected_version'))
     db.execute(delete(ResultPathMatch).where(ResultPathMatch.result_page_id==p.id))
     for i,x in enumerate(payload['items']):
         same(db,Match,x['match_id'],c.id)
@@ -211,12 +232,26 @@ def get_preview(key:str,db:Session=Depends(db_session)):
 def validate(db,c,p):
     errors=[]
     def error(code,message):errors.append({'code':code,'message':message})
-    if not c.published or c.status not in ('completed','archived'):error('RESULT_NOT_FINAL','赛事须公开并结束或归档')
-    try:s,f,ms=final_match(db,c,p)
-    except Exception as exc:
-        from fastapi import HTTPException
-        if not isinstance(exc,HTTPException):raise
-        error('RESULT_NOT_FINAL','实际终局尚未确认');f=None
+    f=None
+    if p.result_kind=='test':
+        if not c.published or c.data_origin!='test' or c.status not in ('ongoing','completed','archived'):
+            error('TEST_MODE_REQUIRED','测试排名须属于已公开的测试赛事')
+        try:
+            expected=test_rankings.ranking_items(db,c,p)
+            actual=placements(db,p)
+            if {(r.registration_id,r.rank_from,r.rank_to,r.team_display_version) for r in actual}!={(r['registration_id'],r['rank_from'],r['rank_to'],r['team_display_version']) for r in expected}:
+                error('SCENARIO','名次或资料版本与测试对局不一致，请重新计算')
+        except Exception as exc:
+            from fastapi import HTTPException
+            if not isinstance(exc,HTTPException):raise
+            error(exc.detail['code'],exc.detail['message'])
+    else:
+        if not c.published or c.status not in ('completed','archived'):error('RESULT_NOT_FINAL','赛事须公开并结束或归档')
+        try:s,f,ms=final_match(db,c,p)
+        except Exception as exc:
+            from fastapi import HTTPException
+            if not isinstance(exc,HTTPException):raise
+            error('RESULT_NOT_FINAL','实际终局尚未确认')
     ps=placements(db,p);groups=defaultdict(list)
     for x in ps:groups[(x.rank_from,x.rank_to)].append(x)
     cursor=1
@@ -245,7 +280,7 @@ def validate(db,c,p):
         if policy=='explicit_count':
             if not x.data.get('ruling_reason'):error('AWARD_QUANTITY','自定领取人数须有理由')
         elif x.data.get('recipient_count')!=count:error('AWARD_QUANTITY','领取人数与所选名单不符')
-    for m in dto['champion_path']:
+    for m in dto['champion_path'] if p.result_kind=='official' else []:
         if not f or m['winner_team_id']!=f.winner or not same(db,Match,m['id'],c.id).published:error('RESULT_NOT_FINAL','路径必须为冠军正式获胜比赛')
     for a in dto['allocations']:
         r=next(x for x in ps if x.id==a['placement_id'])
@@ -276,7 +311,8 @@ def publish(key:str,payload:ResultPublishWrite,idempotency_key:str=Header(),db:S
         if old.source_fingerprint!=payload.get('expected_source_fingerprint'):fail('SOURCE_CHANGED','幂等键已用于其他输入',409)
         return {'data':serialize(old)}
     if payload.get('expected_version')!=p.version:fail('VERSION','工作稿已变化',409)
-    for cls in (Match,Stage,CompetitionPartner,Prize):
+    list(db.scalars(select(Registration).where(Registration.competition_id==c.id).with_for_update()))
+    for cls in ((Match,Stage) if p.result_kind=='official' else (ResultTestMatch,))+(CompetitionPartner,Prize):
         list(db.scalars(select(cls).where(cls.competition_id==c.id).with_for_update()))
     sponsor_ids=[x.sponsor_id for x in rows(db,CompetitionPartner,c.id)]
     list(db.scalars(select(Sponsor).where(Sponsor.id.in_(sponsor_ids)).with_for_update()))
@@ -285,8 +321,8 @@ def publish(key:str,payload:ResultPublishWrite,idempotency_key:str=Header(),db:S
     if v['blocking_errors']:fail('PUBLISH_INCOMPLETE','发布校验未通过',422,v['blocking_errors'])
     if not payload.get('reason'):fail('REASON','发布须填写原因',422)
     number=(db.scalar(select(func.max(ResultRelease.release_number)).where(ResultRelease.result_page_id==p.id)) or 0)+1
-    rid=uid();stamp=now();dto=preview(db,c,p);dto['release']={'id':rid,'number':number,'published_at':stamp.isoformat()}
-    r=ResultRelease(id=rid,result_page_id=p.id,competition_id=c.id,release_number=number,source_fingerprint=v['source_fingerprint'],source_dependencies=sources(db,c,p),public_snapshot=deepcopy(dto),content_sha256=digest_data(dto),reason=payload['reason'],idempotency_key=idempotency_key,published_at=stamp)
+    rid=uid();stamp=now();dto=preview(db,c,p);dto['release']={'id':rid,'number':number,'published_at':stamp.isoformat(),'kind':p.result_kind}
+    r=ResultRelease(result_kind=p.result_kind,data_origin=c.data_origin,id=rid,result_page_id=p.id,competition_id=c.id,release_number=number,source_fingerprint=v['source_fingerprint'],source_dependencies=sources(db,c,p),public_snapshot=deepcopy(dto),content_sha256=digest_data(dto),reason=payload['reason'],idempotency_key=idempotency_key,published_at=stamp)
     db.add(r);db.flush();bump(db,p,p.version);p.current_release_id=r.id
     audit(db,'final_results.publish',r.id,{'reason':r.reason,'sha256':r.content_sha256})
     return {'data':serialize(r)}
@@ -327,7 +363,7 @@ def sponsors(db:Session=Depends(db_session)):return {'data':[entity_dto(s) for s
 
 @admin.post('/sponsors')
 def create_sponsor(payload:dict,db:Session=Depends(db_session)):
-    media_fields(payload);s=Sponsor(name=payload['name'],active=payload.get('active',True),data={k:payload[k] for k in SPONSOR_FIELDS if k in payload});db.add(s);db.flush();audit(db,'sponsor.create',s.id,{})
+    media_fields(payload);s=Sponsor(name=payload['name'],data_origin='test' if payload.get('data_origin')=='test' else 'regular',active=payload.get('active',True),data={k:payload[k] for k in SPONSOR_FIELDS if k in payload});db.add(s);db.flush();audit(db,'sponsor.create',s.id,{})
     return {'data':entity_dto(s)}
 
 @admin.patch('/sponsors/{key}')
@@ -399,7 +435,8 @@ def save_allocations(key:str,payload:ResultAllocationsWrite,db:Session=Depends(d
     audit(db,'final_results.allocations',p.id,{'count':len(payload['items'])});return {'data':serialize(p)}
 
 def visible(db):
-    return list(db.scalars(select(ResultRelease).join(ResultPage,ResultPage.current_release_id==ResultRelease.id).join(Competition,Competition.id==ResultRelease.competition_id).where(ResultRelease.status=='published',Competition.published==True,Competition.status.in_(['completed','archived'])).order_by(ResultRelease.published_at.desc(),ResultRelease.id.desc())))
+    eligibility=or_(and_(ResultRelease.result_kind=='official',Competition.status.in_(['completed','archived'])),and_(ResultRelease.result_kind=='test',Competition.data_origin=='test',Competition.status.in_(['ongoing','completed','archived'])))
+    return list(db.scalars(select(ResultRelease).join(ResultPage,ResultPage.current_release_id==ResultRelease.id).join(Competition,Competition.id==ResultRelease.competition_id).where(ResultRelease.status=='published',Competition.published==True,eligibility).order_by(ResultRelease.published_at.desc(),ResultRelease.id.desc())))
 
 @router.get('/results/latest')
 def latest(db:Session=Depends(db_session)):
@@ -419,19 +456,42 @@ def public_result(key:str,db:Session=Depends(db_session)):
 # Invalidation is part of the source write transaction, across every API writer.
 @event.listens_for(ORMSession,'before_flush')
 def invalidate_releases(db,context,instances):
-    affected=set()
+    official=set();all_kinds=set()
     for obj in list(db.new)+list(db.dirty)+list(db.deleted):
         if isinstance(obj,Match):
-            if obj in db.new or obj in db.deleted or any(inspect(obj).attrs[k].history.has_changes() for k in ('result','winner','a','b','confirmed','published','status','rosters')):affected.add(obj.competition_id)
-        elif isinstance(obj,Stage):affected.add(obj.competition_id)
-        elif isinstance(obj,Competition) and (any(inspect(obj).attrs[k].history.has_changes() for k in ('published','config')) or (inspect(obj).attrs.status.history.has_changes() and obj.status not in ('completed','archived'))):affected.add(obj.id)
+            if obj in db.new or obj in db.deleted or any(inspect(obj).attrs[k].history.has_changes() for k in ('result','winner','a','b','confirmed','published','status','rosters')):official.add(obj.competition_id)
+        elif isinstance(obj,Stage):official.add(obj.competition_id)
+        elif isinstance(obj,Competition):
+            state=inspect(obj)
+            if state.attrs.published.history.has_changes() or state.attrs.data_origin.history.has_changes() or (state.attrs.status.history.has_changes() and obj.status not in ('ongoing','completed','archived')):all_kinds.add(obj.id)
+            if state.attrs.config.history.has_changes() or (state.attrs.status.history.has_changes() and obj.status not in ('completed','archived')):official.add(obj.id)
+        elif isinstance(obj,Registration):
+            if obj in db.new or obj in db.deleted or inspect(obj).attrs.active.history.has_changes():all_kinds.add(obj.competition_id)
         elif isinstance(obj,Advancement):
             m=db.get(Match,obj.source)
-            if m:affected.add(m.competition_id)
-    for cid in affected:
+            if m:official.add(m.competition_id)
+    for cid in official|all_kinds:
         p=db.scalar(select(ResultPage).where(ResultPage.competition_id==cid))
         if p and p.current_release_id:
-            r=db.get(ResultRelease,p.current_release_id);r.status='invalidated';r.invalidated_at=now();r.invalidation_reason='正式比赛、阶段或赛事状态变更';p.current_release_id=None
-            audit(db,'final_results.invalidate',r.id,{'reason':r.invalidation_reason})
+            r=db.get(ResultRelease,p.current_release_id)
+            if cid in all_kinds or r.result_kind=='official':
+                r.status='invalidated';r.invalidated_at=now();r.invalidation_reason='来源或有效参赛集合变更';p.current_release_id=None
+                audit(db,'final_results.invalidate',r.id,{'reason':r.invalidation_reason})
+
+
+@admin.get('/competitions/{key}/final-results/test-matches')
+def get_test_matches(key:str,db:Session=Depends(db_session)):
+    c,p=page(db,key);test_rankings.require_test(c,p)
+    return {'data':{'version':p.version,'items':[serialize(m) for m in test_rankings.matches(db,p)]}}
+
+
+@admin.put('/competitions/{key}/final-results/test-matches')
+def put_test_matches(key:str,payload:test_rankings.ScenarioWrite,db:Session=Depends(db_session)):
+    c,p=page(db,key);test_rankings.require_test(c,p)
+    bump(db,p,payload.expected_version)
+    test_rankings.save_matches(db,c,p,[m.model_dump() for m in payload.items])
+    audit(db,'final_results.test_matches',p.id,{'count':len(payload.items)})
+    return {'data':serialize(p)}
+
 
 router.include_router(admin)

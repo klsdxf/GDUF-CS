@@ -20,21 +20,25 @@ def team_dto(db,t,version=None):
     return {'id':t.id,'competition_id':t.competition_id,'code':t.code,'name':snapshot.name if snapshot else t.name,'english_name':snapshot.english_name if snapshot else t.english_name,'emblem_text':snapshot.emblem_text if snapshot else t.emblem_text,'poster_title_lines':snapshot.poster_title_lines if snapshot else t.poster_title_lines,'description':snapshot.description if snapshot else t.description,'logo':snapshot.logo if snapshot else t.logo,'members':[{'nickname':m.nickname,'role':m.role,'captain':m.captain} for m in db.scalars(select(Member).where(Member.registration_id==t.id,Member.version==(version or t.version)))]}
 
 def match_dto(db,m):
-    out={k:getattr(m,k) for k in ('id','competition_id','stage_id','code','round','group','bracket','source_a','source_b','best_of','scheduled_at','status','confirmed','version')}
+    out={k:serialize(m)[k] for k in ('id','competition_id','stage_id','code','round','group','bracket','source_a','source_b','best_of','scheduled_at','status','confirmed','version')}
     out['result']=m.result if m.confirmed else {}
     out['teams']=[team_dto(db,db.get(Registration,t),m.rosters.get(t)) if t else None for t in (m.a,m.b)]
     return out
 
 def c_dto(c):
-    return {k:getattr(c,k) for k in ('id','slug','name','season','organizer','description','rules','map_pool','status','team_limit','is_default')}
+    return {**{k:getattr(c,k) for k in ('id','slug','name','season','organizer','description','rules','map_pool','status','team_limit','is_default')},'presentation':c.config.get('presentation',{})}
+
+def announcement_dto(a):
+    return {k:serialize(a)[k] for k in ('id','competition_id','title','body','published','pinned','publish_at','category_label','display_order')}
 
 @router.get('/competitions')
 def competitions(db:Session=Depends(db_session)):
-    return {'data':[c_dto(c) for c in db.scalars(select(Competition).where(Competition.published==True).order_by(Competition.is_default.desc(),Competition.season.desc()))]}
+    return {'data':[{**c_dto(c),'team_count':db.query(Registration).filter(Registration.competition_id==c.id,Registration.active==True).count()} for c in db.scalars(select(Competition).where(Competition.published==True).order_by(Competition.is_default.desc(),Competition.season.desc()))]}
 
 @router.get('/competitions/{key}')
 def get_competition(key:str,db:Session=Depends(db_session)):
-    return {'data':c_dto(public_c(db,key))}
+    c=public_c(db,key)
+    return {'data':{**c_dto(c),'team_count':db.query(Registration).filter(Registration.competition_id==c.id,Registration.active==True).count()}}
 
 @router.get('/competitions/{key}/teams')
 def teams(key:str,db:Session=Depends(db_session)):
@@ -94,14 +98,14 @@ def bracket(key:str,db:Session=Depends(db_session)):
 @router.get('/competitions/{key}/announcements')
 def announcements(key:str,db:Session=Depends(db_session)):
     c=public_c(db,key)
-    return {'data':[serialize(a) for a in db.scalars(select(Announcement).where(Announcement.competition_id==c.id,Announcement.published==True,Announcement.publish_at<=now()).order_by(Announcement.pinned.desc(),Announcement.publish_at.desc()))]}
+    return {'data':[announcement_dto(a) for a in db.scalars(select(Announcement).where(Announcement.competition_id==c.id,Announcement.published==True,Announcement.publish_at<=now()).order_by(Announcement.pinned.desc(),Announcement.display_order,Announcement.publish_at.desc()))]}
 
 @router.get('/announcements/{key}')
 def announcement(key:str,db:Session=Depends(db_session)):
     a=db.get(Announcement,key)
     if not a or not a.published or a.publish_at.replace(tzinfo=timezone.utc)>now():fail('NOT_FOUND','公告尚未公布',404)
     public_c(db,a.competition_id)
-    return {'data':serialize(a)}
+    return {'data':announcement_dto(a)}
 
 @router.get('/competitions/{key}/live')
 def live(key:str,db:Session=Depends(db_session)):

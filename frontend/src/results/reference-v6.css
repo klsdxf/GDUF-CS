@@ -113,3 +113,7 @@ body{margin:0;background:#101216}html{scroll-behavior:smooth}.public-site.result
 .public-site.results-page .seal6-glint{animation:seal6-spark 7s 1s ease-in-out infinite;transform-origin:161px 115px}.public-site.results-page .seal6-glint-small{animation:seal6-spark 7s 3.5s ease-in-out infinite;transform-origin:451.5px 468.5px}
 @keyframes seal6-spark{0%,100%{opacity:.3;scale:.7}40%{opacity:.95;scale:1.1}65%{opacity:.55;scale:.9}}
 @media(max-width:760px){.public-site.results-page .v5-toolbar{min-height:0;padding-top:23px;padding-bottom:23px}.public-site.results-page .v5-seal-reflection{animation-duration:10s}}
+
+/* Preserve configured poster line breaks for API team names at narrow widths. */
+.public-site.results-page .v4-type h3[data-poster-lines] br{display:initial}
+.public-site.results-page .v4-type h3[data-poster-lines]>span{margin-left:0}

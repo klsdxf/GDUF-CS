@@ -50,6 +50,8 @@ class Competition(Base):
     team_limit: Mapped[int] = mapped_column(default=32)
     revision: Mapped[int] = mapped_column(default=0)
     focus_match_id: Mapped[str | None]
+    data_origin: Mapped[str] = mapped_column(String(16), default='regular', server_default='regular')
+    seed_batch_id: Mapped[str | None] = mapped_column(ForeignKey('seed_batches.id'))
 
 class Registration(Base):
     __tablename__ = 'registrations'
@@ -162,6 +164,8 @@ class Announcement(Base):
     published: Mapped[bool] = mapped_column(default=False)
     pinned: Mapped[bool] = mapped_column(default=False)
     publish_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    category_label: Mapped[str] = mapped_column(String(100), default='', server_default='')
+    display_order: Mapped[int] = mapped_column(default=0, server_default='0')
 
 class LiveStream(Base):
     __tablename__ = 'live_streams'
@@ -191,6 +195,7 @@ class ResultPage(Base):
     competition_id: Mapped[str] = mapped_column(ForeignKey('competitions.id'), unique=True)
     version: Mapped[int] = mapped_column(default=1)
     config: Mapped[dict] = mapped_column(JSON, default=dict)
+    result_kind: Mapped[str] = mapped_column(String(16), default='official', server_default='official')
     current_release_id: Mapped[str | None] = mapped_column(ForeignKey('result_releases.id', use_alter=True, name='fk_current_release'))
 
 class ResultPlacement(Base):
@@ -222,6 +227,8 @@ class Sponsor(Base):
     data: Mapped[dict] = mapped_column(JSON, default=dict)
     active: Mapped[bool] = mapped_column(default=True)
     version: Mapped[int] = mapped_column(default=1)
+    data_origin: Mapped[str] = mapped_column(String(16), default='regular', server_default='regular')
+    seed_batch_id: Mapped[str | None] = mapped_column(ForeignKey('seed_batches.id'))
 
 class CompetitionPartner(Base):
     __tablename__ = 'competition_partners'
@@ -268,6 +275,8 @@ class ResultRelease(Base):
     published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     reason: Mapped[str]
     idempotency_key: Mapped[str | None]
+    result_kind: Mapped[str] = mapped_column(String(16), default='official', server_default='official')
+    data_origin: Mapped[str] = mapped_column(String(16), default='regular', server_default='regular')
     invalidated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     invalidation_reason: Mapped[str] = mapped_column(default='')
     __table_args__ = (UniqueConstraint('result_page_id','release_number'), UniqueConstraint('result_page_id','idempotency_key'))
@@ -291,3 +300,73 @@ ResultRelease.__table__.append_constraint(UniqueConstraint('id','result_page_id'
 ResultPage.__table__.append_constraint(ForeignKeyConstraint(['current_release_id','id'],['result_releases.id','result_releases.result_page_id'],name='fk_release_belongs_to_page',use_alter=True))
 
 Index('uq_presenting_partner',CompetitionPartner.competition_id,unique=True,sqlite_where=CompetitionPartner.tier=='presenting',postgresql_where=CompetitionPartner.tier=='presenting')
+
+
+class SeedBatch(Base):
+    __tablename__ = 'seed_batches'
+    id: Mapped[str] = mapped_column(primary_key=True, default=uid)
+    package_key: Mapped[str]
+    package_version: Mapped[str]
+    content_sha256: Mapped[str]
+    idempotency_key: Mapped[str] = mapped_column(unique=True)
+    manifest: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    __table_args__ = (UniqueConstraint('package_key','package_version'),)
+
+
+class SeedEntity(Base):
+    __tablename__ = 'seed_entities'
+    id: Mapped[str] = mapped_column(primary_key=True, default=uid)
+    batch_id: Mapped[str] = mapped_column(ForeignKey('seed_batches.id'), index=True)
+    entity_type: Mapped[str]
+    source_key: Mapped[str]
+    entity_id: Mapped[str]
+    imported_fingerprint: Mapped[str]
+    __table_args__ = (UniqueConstraint('batch_id','entity_type','source_key'),)
+
+
+class SeedPreview(Base):
+    __tablename__ = 'seed_previews'
+    id: Mapped[str] = mapped_column(primary_key=True, default=uid)
+    package_key: Mapped[str]
+    package_version: Mapped[str]
+    content_sha256: Mapped[str]
+    state_fingerprint: Mapped[str]
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class ResultTestMatch(Base):
+    __tablename__ = 'result_test_matches'
+    id: Mapped[str] = mapped_column(primary_key=True, default=lambda:'rtm-'+uid())
+    competition_id: Mapped[str] = mapped_column(ForeignKey('competitions.id'), index=True)
+    result_page_id: Mapped[str] = mapped_column(ForeignKey('competition_result_pages.id'), index=True)
+    source_key: Mapped[str]
+    a_registration_id: Mapped[str] = mapped_column(ForeignKey('registrations.id'))
+    b_registration_id: Mapped[str] = mapped_column(ForeignKey('registrations.id'))
+    winner_registration_id: Mapped[str] = mapped_column(ForeignKey('registrations.id'))
+    a_display_version: Mapped[int]
+    b_display_version: Mapped[int]
+    match_kind: Mapped[str]
+    label: Mapped[str]
+    best_of: Mapped[int]
+    wins_a: Mapped[int]
+    wins_b: Mapped[int]
+    maps: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    maps_status: Mapped[str] = mapped_column(default='not_provided')
+    champion_path_order: Mapped[int | None]
+    version: Mapped[int] = mapped_column(default=1)
+    __table_args__ = (
+        UniqueConstraint('result_page_id','source_key'),
+        UniqueConstraint('result_page_id','champion_path_order'),
+        CheckConstraint('best_of IN (1,3,5)'),
+        CheckConstraint('a_registration_id <> b_registration_id'),
+        CheckConstraint('winner_registration_id IN (a_registration_id,b_registration_id)'),
+        CheckConstraint('wins_a >= 0 AND wins_b >= 0'),
+        ForeignKeyConstraint(['result_page_id','competition_id'],['competition_result_pages.id','competition_result_pages.competition_id']),
+    )
+
+for field in ('a_registration_id','b_registration_id','winner_registration_id'):
+    ResultTestMatch.__table__.append_constraint(ForeignKeyConstraint([field,'competition_id'],['registrations.id','registrations.competition_id']))
+for side in ('a','b'):
+    ResultTestMatch.__table__.append_constraint(ForeignKeyConstraint([side+'_registration_id',side+'_display_version'],['roster_snapshots.registration_id','roster_snapshots.version']))
+Index('uq_test_final',ResultTestMatch.result_page_id,unique=True,sqlite_where=ResultTestMatch.match_kind=='final',postgresql_where=ResultTestMatch.match_kind=='final')

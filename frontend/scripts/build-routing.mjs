@@ -1,6 +1,6 @@
 import {readFileSync,writeFileSync} from 'node:fs'
 import {loadEnv} from 'vite'
-const mode=process.env.VITE_PUBLIC_DATA_MODE||loadEnv('production',process.cwd(),'VITE_').VITE_PUBLIC_DATA_MODE||'demo'
+const mode=process.env.VITE_PUBLIC_DATA_MODE||loadEnv('production',process.cwd(),'VITE_').VITE_PUBLIC_DATA_MODE||'api'
 if(!['demo','api'].includes(mode))throw new Error('Invalid data mode')
 const pattern=mode==='demo'?'(?:results(?:/autumn)?|competitions/(?:autumn|spring|archive)(?:/(?:schedule|standings|teams|rules|announcements|live))?|competitions/autumn/teams/[0-7]|matches/(?:featured|upcoming|upcoming-2)|announcements/[0-2])':'(?:results(?:/[^/]+)?|competitions/[^/]+(?:/(?:schedule|standings|teams|rules|announcements|live))?|competitions/[^/]+/teams/[^/]+|matches/[^/]+|announcements/[^/]+)'
 const check=mode==='api'?`auth_request /_page_check;

@@ -1,0 +1,651 @@
+{
+  "schema_version": "1.0",
+  "package_key": "public-test",
+  "package_version": "1",
+  "timezone": "Asia/Shanghai",
+  "competitions": [
+    {
+      "source_key": "autumn",
+      "slug": "autumn",
+      "name": "2026 秋季赛",
+      "season": "2026",
+      "status": "ongoing",
+      "team_limit": 4,
+      "rules": "01　参赛名单\n每支队伍包含 5 名正式成员，可设置替补。管理员维护参赛名单，公开页面展示昵称和队内身份。联系方式、Steam ID 及管理备注不在公开页面展示。\n\n02　小组赛与晋级\n4 支队伍分为一组，小组内单循环。前两名晋级单败决赛。胜 3 分、负 0 分；同分依次比较相互战绩、地图差、回合差，仍同分由管理员填写理由裁定并确认晋级。小组赛 BO3，决赛 BO5。\n\n03　地图池\nInferno、Mirage、Ancient、Nuke、Dust II、Anubis、Train。\n\n04　比赛结果\n每张地图回合比分与系列赛地图比分分别展示。延期、取消、弃权及技术判负明确标记，不以虚构回合比分代替异常结果。",
+      "map_pool": [
+        "Inferno",
+        "Mirage",
+        "Ancient",
+        "Nuke",
+        "Dust II",
+        "Anubis",
+        "Train"
+      ],
+      "config": {
+        "presentation": {
+          "hero_title_lines": [
+            "AUTUMN",
+            "2026"
+          ],
+          "poster_label": "AUTUMN",
+          "poster_asset_key": "cs2-1",
+          "starts_on": "2026-11-07",
+          "ends_on": "2026-11-29",
+          "date_label": "11.07 — 11.29",
+          "display_name": "广金 CS2 秋季赛"
+        }
+      }
+    },
+    {
+      "source_key": "spring",
+      "slug": "spring",
+      "name": "2026 春季赛",
+      "season": "2026",
+      "status": "completed",
+      "team_limit": 4,
+      "rules": "01　参赛名单\n每支队伍包含 5 名正式成员，可设置替补。管理员维护参赛名单，公开页面展示昵称和队内身份。联系方式、Steam ID 及管理备注不在公开页面展示。\n\n02　小组赛与晋级\n4 支队伍分为一组，小组内单循环。前两名晋级单败决赛。胜 3 分、负 0 分；同分依次比较相互战绩、地图差、回合差，仍同分由管理员填写理由裁定并确认晋级。小组赛 BO3，决赛 BO5。\n\n03　地图池\nInferno、Mirage、Ancient、Nuke、Dust II、Anubis、Train。\n\n04　比赛结果\n每张地图回合比分与系列赛地图比分分别展示。延期、取消、弃权及技术判负明确标记，不以虚构回合比分代替异常结果。",
+      "map_pool": [
+        "Inferno",
+        "Mirage",
+        "Ancient",
+        "Nuke",
+        "Dust II",
+        "Anubis",
+        "Train"
+      ],
+      "config": {
+        "presentation": {
+          "hero_title_lines": [
+            "SPRING",
+            "2026"
+          ],
+          "poster_label": "SPRING",
+          "poster_asset_key": "cs2-2",
+          "starts_on": "2026-04-11",
+          "ends_on": "2026-04-26",
+          "date_label": "04.11 — 04.26",
+          "display_name": "广金 CS2 春季赛"
+        }
+      }
+    },
+    {
+      "source_key": "archive",
+      "slug": "archive",
+      "name": "2025 秋季赛",
+      "season": "2025",
+      "status": "archived",
+      "team_limit": 4,
+      "rules": "01　参赛名单\n每支队伍包含 5 名正式成员，可设置替补。管理员维护参赛名单，公开页面展示昵称和队内身份。联系方式、Steam ID 及管理备注不在公开页面展示。\n\n02　小组赛与晋级\n4 支队伍分为一组，小组内单循环。前两名晋级单败决赛。胜 3 分、负 0 分；同分依次比较相互战绩、地图差、回合差，仍同分由管理员填写理由裁定并确认晋级。小组赛 BO3，决赛 BO5。\n\n03　地图池\nInferno、Mirage、Ancient、Nuke、Dust II、Anubis、Train。\n\n04　比赛结果\n每张地图回合比分与系列赛地图比分分别展示。延期、取消、弃权及技术判负明确标记，不以虚构回合比分代替异常结果。",
+      "map_pool": [
+        "Inferno",
+        "Mirage",
+        "Ancient",
+        "Nuke",
+        "Dust II",
+        "Anubis",
+        "Train"
+      ],
+      "config": {
+        "presentation": {
+          "hero_title_lines": [
+            "FALL",
+            "2025"
+          ],
+          "poster_label": "FALL",
+          "poster_asset_key": "cs2-3",
+          "starts_on": "2025-11-08",
+          "ends_on": "2025-11-23",
+          "date_label": "11.08 — 11.23",
+          "display_name": "广金 CS2 秋季赛"
+        }
+      }
+    }
+  ],
+  "teams": [
+    {
+      "source_key": "pp",
+      "code": "PP",
+      "name": "Poppin'Party",
+      "english_name": "Poppin'Party",
+      "emblem_text": "PP",
+      "poster_title_lines": [
+        "Poppin'",
+        "Party"
+      ],
+      "contact": "内部测试占位",
+      "members": [
+        {
+          "nickname": "kapok",
+          "steam_id": "76561199000000000",
+          "role": "正式",
+          "captain": true
+        },
+        {
+          "nickname": "north",
+          "steam_id": "76561199000000001",
+          "role": "正式",
+          "captain": false
+        },
+        {
+          "nickname": "mango",
+          "steam_id": "76561199000000002",
+          "role": "正式",
+          "captain": false
+        },
+        {
+          "nickname": "river",
+          "steam_id": "76561199000000003",
+          "role": "正式",
+          "captain": false
+        },
+        {
+          "nickname": "echo",
+          "steam_id": "76561199000000004",
+          "role": "正式",
+          "captain": false
+        }
+      ]
+    },
+    {
+      "source_key": "fs",
+      "code": "FS",
+      "name": "金融风暴",
+      "english_name": "FINANCE STORM",
+      "emblem_text": "FS",
+      "poster_title_lines": [
+        "FINANCE",
+        "STORM"
+      ],
+      "contact": "内部测试占位",
+      "members": [
+        {
+          "nickname": "storm",
+          "steam_id": "76561199000000010",
+          "role": "正式",
+          "captain": true
+        },
+        {
+          "nickname": "zero",
+          "steam_id": "76561199000000011",
+          "role": "正式",
+          "captain": false
+        },
+        {
+          "nickname": "finch",
+          "steam_id": "76561199000000012",
+          "role": "正式",
+          "captain": false
+        },
+        {
+          "nickname": "nine",
+          "steam_id": "76561199000000013",
+          "role": "正式",
+          "captain": false
+        },
+        {
+          "nickname": "orbit",
+          "steam_id": "76561199000000014",
+          "role": "正式",
+          "captain": false
+        }
+      ]
+    },
+    {
+      "source_key": "na",
+      "code": "NA",
+      "name": "北苑竞技",
+      "english_name": "NORTH ARENA",
+      "emblem_text": "NA",
+      "poster_title_lines": [
+        "NORTH",
+        "ARENA"
+      ],
+      "contact": "内部测试占位",
+      "members": [
+        {
+          "nickname": "na_ace",
+          "steam_id": "76561199000000020",
+          "role": "正式",
+          "captain": true
+        },
+        {
+          "nickname": "na_nova",
+          "steam_id": "76561199000000021",
+          "role": "正式",
+          "captain": false
+        },
+        {
+          "nickname": "na_mint",
+          "steam_id": "76561199000000022",
+          "role": "正式",
+          "captain": false
+        },
+        {
+          "nickname": "na_six",
+          "steam_id": "76561199000000023",
+          "role": "正式",
+          "captain": false
+        },
+        {
+          "nickname": "na_sky",
+          "steam_id": "76561199000000024",
+          "role": "正式",
+          "captain": false
+        }
+      ]
+    },
+    {
+      "source_key": "ot",
+      "code": "OT",
+      "name": "不加班战队",
+      "english_name": "NO OVERTIME",
+      "emblem_text": "OT",
+      "poster_title_lines": [
+        "NO",
+        "OVERTIME"
+      ],
+      "contact": "内部测试占位",
+      "members": [
+        {
+          "nickname": "ot_ace",
+          "steam_id": "76561199000000030",
+          "role": "正式",
+          "captain": true
+        },
+        {
+          "nickname": "ot_nova",
+          "steam_id": "76561199000000031",
+          "role": "正式",
+          "captain": false
+        },
+        {
+          "nickname": "ot_mint",
+          "steam_id": "76561199000000032",
+          "role": "正式",
+          "captain": false
+        },
+        {
+          "nickname": "ot_six",
+          "steam_id": "76561199000000033",
+          "role": "正式",
+          "captain": false
+        },
+        {
+          "nickname": "ot_sky",
+          "steam_id": "76561199000000034",
+          "role": "正式",
+          "captain": false
+        }
+      ]
+    }
+  ],
+  "schedule": [
+    {
+      "source_key": "group-14-0",
+      "a": "pp",
+      "b": "na",
+      "scheduled_at": "2026-11-14T19:00:00+08:00",
+      "maps": null,
+      "origin": "原待开始对局"
+    },
+    {
+      "source_key": "group-14-1",
+      "a": "fs",
+      "b": "ot",
+      "scheduled_at": "2026-11-14T20:30:00+08:00",
+      "maps": null,
+      "origin": "原待开始对局"
+    },
+    {
+      "source_key": "group-07-0",
+      "a": "na",
+      "b": "ot",
+      "scheduled_at": "2026-11-07T18:00:00+08:00",
+      "maps": [
+        {
+          "map_name": "Inferno",
+          "score_a": 13,
+          "score_b": 8
+        },
+        {
+          "map_name": "Mirage",
+          "score_a": 13,
+          "score_b": 9
+        }
+      ],
+      "origin": "旧演示规则生成逐图测试成绩"
+    },
+    {
+      "source_key": "group-07-1",
+      "a": "pp",
+      "b": "ot",
+      "scheduled_at": "2026-11-07T19:30:00+08:00",
+      "maps": [
+        {
+          "map_name": "Inferno",
+          "score_a": 13,
+          "score_b": 8
+        },
+        {
+          "map_name": "Mirage",
+          "score_a": 13,
+          "score_b": 9
+        }
+      ],
+      "origin": "旧演示规则生成逐图测试成绩"
+    },
+    {
+      "source_key": "group-08-0",
+      "a": "pp",
+      "b": "fs",
+      "scheduled_at": "2026-11-08T19:00:00+08:00",
+      "maps": [
+        {
+          "map_name": "Inferno",
+          "score_a": 13,
+          "score_b": 8
+        },
+        {
+          "map_name": "Mirage",
+          "score_a": 9,
+          "score_b": 13
+        },
+        {
+          "map_name": "Ancient",
+          "score_a": 13,
+          "score_b": 10
+        }
+      ],
+      "origin": "旧演示规则生成逐图测试成绩"
+    },
+    {
+      "source_key": "group-08-1",
+      "a": "fs",
+      "b": "na",
+      "scheduled_at": "2026-11-08T20:30:00+08:00",
+      "maps": [
+        {
+          "map_name": "Inferno",
+          "score_a": 13,
+          "score_b": 8
+        },
+        {
+          "map_name": "Mirage",
+          "score_a": 9,
+          "score_b": 13
+        },
+        {
+          "map_name": "Ancient",
+          "score_a": 13,
+          "score_b": 10
+        }
+      ],
+      "origin": "旧演示规则生成逐图测试成绩"
+    }
+  ],
+  "test_matches": [
+    {
+      "source_key": "semi-pp-na",
+      "a": "pp",
+      "b": "na",
+      "winner": "pp",
+      "match_kind": "semifinal",
+      "label": "半决赛",
+      "best_of": 3,
+      "wins_a": 2,
+      "wins_b": 1,
+      "maps": null,
+      "champion_path_order": 1,
+      "origin": "原 V6 比分"
+    },
+    {
+      "source_key": "final-pp-fs",
+      "a": "pp",
+      "b": "fs",
+      "winner": "pp",
+      "match_kind": "final",
+      "label": "总决赛",
+      "best_of": 5,
+      "wins_a": 3,
+      "wins_b": 1,
+      "maps": [
+        {
+          "map_name": "Inferno",
+          "score_a": 13,
+          "score_b": 8
+        },
+        {
+          "map_name": "Mirage",
+          "score_a": 9,
+          "score_b": 13
+        },
+        {
+          "map_name": "Ancient",
+          "score_a": 13,
+          "score_b": 10
+        },
+        {
+          "map_name": "Nuke",
+          "score_a": 13,
+          "score_b": 7
+        }
+      ],
+      "champion_path_order": 2,
+      "origin": "原 V6 比分"
+    },
+    {
+      "source_key": "semi-fs-ot",
+      "a": "fs",
+      "b": "ot",
+      "winner": "fs",
+      "match_kind": "semifinal",
+      "label": "半决赛",
+      "best_of": 3,
+      "wins_a": 2,
+      "wins_b": 0,
+      "maps": null,
+      "champion_path_order": null,
+      "origin": "补充合成测试对局"
+    },
+    {
+      "source_key": "third-na-ot",
+      "a": "na",
+      "b": "ot",
+      "winner": "na",
+      "match_kind": "third_place",
+      "label": "季军赛",
+      "best_of": 3,
+      "wins_a": 2,
+      "wins_b": 0,
+      "maps": null,
+      "champion_path_order": null,
+      "origin": "补充合成测试对局"
+    }
+  ],
+  "news": [
+    {
+      "source_key": "news-0",
+      "title": "秋季赛第二周赛程安排",
+      "body": "第二周比赛将在 11 月 14 日、15 日举行。请参赛队伍根据赛程提前确认出场名单。",
+      "category_label": "比赛日 / 赛程更新",
+      "display_order": 0,
+      "publish_at": "2026-11-09T09:00:00+08:00"
+    },
+    {
+      "source_key": "news-1",
+      "title": "2026 秋季赛参赛名单公示",
+      "body": "本届赛事参赛名单已完成整理。各队队员昵称、正式与替补身份可在战队页面查看。",
+      "category_label": "赛事公告 / 队伍名单",
+      "display_order": 1,
+      "publish_at": "2026-11-07T09:00:00+08:00"
+    },
+    {
+      "source_key": "news-2",
+      "title": "竞赛规则与地图池说明",
+      "body": "本届采用小组赛加单败决赛，比赛形式、BO 与地图池以本届发布的赛事规则为准。",
+      "category_label": "竞赛规则 / 赛前须知",
+      "display_order": 2,
+      "publish_at": "2026-11-05T09:00:00+08:00"
+    }
+  ],
+  "sponsors": [
+    {
+      "id": "demo-partner-nexcore",
+      "tier": "presenting",
+      "name": "核境",
+      "english_name": "NEXCORE",
+      "builtin_mark_key": "nexcore",
+      "category": "首席赞助商",
+      "description": "核境 NEXCORE 电竞外设，为本届赛事提供前三名全队装备及参赛纪念徽章。",
+      "official_url": null
+    },
+    {
+      "id": "demo-partner-frame",
+      "tier": "official",
+      "name": "帧界",
+      "english_name": "FRAME",
+      "category": "显示设备伙伴",
+      "official_url": null
+    },
+    {
+      "id": "demo-partner-fizz",
+      "tier": "official",
+      "name": "沸点",
+      "english_name": "FIZZ",
+      "category": "饮品支持伙伴",
+      "official_url": null
+    },
+    {
+      "id": "demo-partner-linkup",
+      "tier": "official",
+      "name": "联序",
+      "english_name": "LINKUP",
+      "category": "网络支持伙伴",
+      "official_url": null
+    },
+    {
+      "id": "demo-partner-replay",
+      "tier": "official",
+      "name": "回响",
+      "english_name": "REPLAY",
+      "category": "赛事内容伙伴",
+      "official_url": null
+    }
+  ],
+  "prizes": [
+    {
+      "id": "demo-prize-h1",
+      "model_code": "H1",
+      "name": "H1 电竞耳机",
+      "unit": "副",
+      "category": "equipment",
+      "builtin_illustration_key": "headset",
+      "provider_partner_id": "demo-partner-nexcore"
+    },
+    {
+      "id": "demo-prize-k75",
+      "model_code": "K75",
+      "name": "K75 机械键盘",
+      "unit": "把",
+      "category": "equipment",
+      "builtin_illustration_key": "keyboard",
+      "provider_partner_id": "demo-partner-nexcore"
+    },
+    {
+      "id": "demo-prize-m4",
+      "model_code": "M4",
+      "name": "M4 无线鼠标",
+      "unit": "只",
+      "category": "equipment",
+      "builtin_illustration_key": "mouse",
+      "provider_partner_id": "demo-partner-nexcore"
+    },
+    {
+      "id": "demo-prize-badge",
+      "model_code": "BADGE",
+      "name": "赛事纪念徽章",
+      "unit": "枚",
+      "category": "commemorative",
+      "builtin_illustration_key": null,
+      "provider_partner_id": "demo-partner-nexcore"
+    }
+  ],
+  "content_changes": [
+    {
+      "field": "news-0.body",
+      "before": "第二周比赛将在 11 月 14 日、15 日举行。请参赛队伍根据赛程提前确认出场名单。本页为前端设计演示，日期及安排均为示例。",
+      "after": "第二周比赛将在 11 月 14 日、15 日举行。请参赛队伍根据赛程提前确认出场名单。",
+      "reason": "移除公开演示身份说明，保留业务内容"
+    },
+    {
+      "field": "news-1.body",
+      "before": "本届赛事参赛名单已完成整理。各队队员昵称、正式与替补身份可在战队页面查看。本页展示的是虚构队伍与昵称，不对应实际参赛者。",
+      "after": "本届赛事参赛名单已完成整理。各队队员昵称、正式与替补身份可在战队页面查看。",
+      "reason": "移除公开演示身份说明，保留业务内容"
+    },
+    {
+      "field": "news-2.body",
+      "before": "本预览以小组赛加单败淘汰赛为示例。最终比赛形式、BO 与地图池应以实际发布的正式赛事规则为准。",
+      "after": "本届采用小组赛加单败决赛，比赛形式、BO 与地图池以本届发布的赛事规则为准。",
+      "reason": "移除公开演示身份说明，保留业务内容"
+    },
+    {
+      "field": "champion",
+      "before": "木棉 FIVE / MF / KAPOK FIVE",
+      "after": "Poppin'Party / PP / Poppin'Party",
+      "reason": "用户确认更名；原 MF 引用统一映射 pp"
+    },
+    {
+      "field": "team_count",
+      "before": 16,
+      "after": 4,
+      "reason": "用户确认四队；移除第5至8队及对应四分之一决赛"
+    },
+    {
+      "field": "commemorative",
+      "before": 40,
+      "after": 20,
+      "reason": "每队五人，共四队"
+    },
+    {
+      "field": "standings",
+      "before": [
+        {
+          "rank": 1,
+          "team_code": "MF",
+          "wins": 2,
+          "losses": 0,
+          "points": 6
+        },
+        {
+          "rank": 2,
+          "team_code": "FS",
+          "wins": 1,
+          "losses": 1,
+          "points": 3
+        },
+        {
+          "rank": 3,
+          "team_code": "NA",
+          "wins": 1,
+          "losses": 1,
+          "points": 3
+        },
+        {
+          "rank": 4,
+          "team_code": "OT",
+          "wins": 0,
+          "losses": 2,
+          "points": 0
+        }
+      ],
+      "after": "按已确认的四场小组比赛计算",
+      "reason": "旧静态表与比赛记录不一致"
+    }
+  ],
+  "sources": [
+    "frontend/src/redesign/sample-data.json",
+    "frontend/src/redesign/demo.ts",
+    "frontend/src/results/demo-v6.json"
+  ]
+}

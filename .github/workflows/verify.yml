@@ -33,7 +33,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: {node-version: '22', cache: npm, cache-dependency-path: frontend/package-lock.json}
       - run: cd frontend && npm ci && npm run build && npm audit --audit-level=moderate
-      - run: cd frontend && VITE_PUBLIC_DATA_MODE=api npm run build
+      - run: cd frontend && VITE_PUBLIC_DATA_MODE=demo npm run build
   frontend-e2e:
     runs-on: windows-latest
     env:
@@ -48,6 +48,7 @@ jobs:
       - run: cd frontend && npm ci && npx playwright install --with-deps chromium
       - run: cd frontend && npm run test:e2e -- --workers=2
       - run: cd frontend && npx playwright test --config playwright.results-live.config.ts
+      - run: cd frontend && npx playwright test --config playwright.backend-data.config.ts
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -68,7 +69,7 @@ jobs:
       - name: Verify same-domain API SPA routing and private endpoints
         run: |
           curl --fail http://127.0.0.1:8080/api/v1/health
-          curl --fail http://127.0.0.1:8080/competitions/autumn/schedule | grep 'id="app"'
+          curl --fail http://127.0.0.1:8080/competitions | grep 'id="app"'
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/api/v1/admin/competitions)" = 401
           for path in /unknown /matches/missing /competitions/missing /missing.css; do
             test "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8080$path")" = 404

@@ -181,16 +181,17 @@ def matches(key:str,db:Session=Depends(db_session)):
 
 @router.patch('/matches/{key}')
 def arrange(key:str,payload:dict,db:Session=Depends(db_session)):
-    from datetime import datetime
+    from datetime import datetime, timezone
     m=db.get(Match,key)
     if not m:fail('NOT_FOUND','比赛不存在',404)
     competition(db,m.competition_id,True)
     if 'scheduled_at' in payload:
         scheduled=datetime.fromisoformat(payload['scheduled_at']) if payload['scheduled_at'] else None
         if scheduled and not scheduled.tzinfo:fail('TIMEZONE','时间必须包含时区')
+        if scheduled:scheduled=scheduled.astimezone(timezone.utc)
         for other in db.scalars(select(Match).where(Match.competition_id==m.competition_id,Match.id!=key,Match.status.notin_(['cancelled','completed']))):
             if scheduled and other.scheduled_at and abs((scheduled.replace(tzinfo=None)-other.scheduled_at.replace(tzinfo=None)).total_seconds())<3600 and ({m.a,m.b}-{None})&({other.a,other.b}-{None}):fail('TIME_CONFLICT','同队比赛间隔不足一小时',409,{'match_id':other.id})
-        m.scheduled_at=scheduled
+        m.scheduled_at=scheduled.astimezone(timezone.utc) if scheduled else None
     if 'status' in payload:
         if payload['status'] not in ('unscheduled','scheduled','ongoing','postponed','cancelled'):fail('STATUS','无效状态')
         if m.confirmed:fail('CONFIRMED','正式结果需通过修正流程修改',409)

@@ -2,7 +2,7 @@ import hashlib
 import io
 import re
 import zipfile
-from datetime import timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from openpyxl import Workbook, load_workbook
 from fastapi import APIRouter, Depends, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
@@ -10,12 +10,17 @@ from sqlalchemy import select, delete
 from sqlalchemy.orm import Session
 from .db import *
 from .security import authenticated, fail
-from .schemas import CompetitionCreate
+from .schemas import CompetitionCreate, CompetitionPresentation
 
 router = APIRouter(prefix='/api/v1/admin', dependencies=[Depends(authenticated)])
 
 def serialize(obj):
-    return {col.name: getattr(obj, col.name) for col in obj.__table__.columns}
+    return {col.name: (value.replace(tzinfo=timezone.utc) if isinstance(value,datetime) and value.tzinfo is None else value) for col in obj.__table__.columns for value in [getattr(obj,col.name)]}
+
+def presentation_config(config):
+    if 'presentation' in config:
+        config={**config,'presentation':CompetitionPresentation.model_validate(config['presentation']).model_dump()}
+    return config
 
 def competition(db, key, lock=False):
     q = select(Competition).where((Competition.id == key) | (Competition.slug == key))
@@ -116,12 +121,15 @@ def revise_roster(key:str,payload:dict,db:Session=Depends(db_session)):
     return {'data':{'ids':ids,'message':'既有比赛仍引用发布时的名单版本；变更仅影响后续新增比赛'}}
 
 @router.get('/competitions')
-def list_competitions(db: Session = Depends(db_session)):
-    return {'data': [serialize(c) for c in db.scalars(select(Competition))]}
+def list_competitions(data_origin:str='',db: Session = Depends(db_session)):
+    query=select(Competition)
+    if data_origin:query=query.where(Competition.data_origin==data_origin)
+    return {'data': [serialize(c) for c in db.scalars(query)]}
 
 @router.post('/competitions')
 def create_competition(payload: CompetitionCreate, db: Session = Depends(db_session)):
     payload=payload.model_dump()
+    payload['config']=presentation_config(payload['config'])
     if not re.fullmatch('[a-z0-9-]{1,100}', payload.get('slug', '')) or not payload.get('name'):
         fail('COMPETITION', '名称必填，路径仅允许小写英文、数字和横线')
     c = Competition(**{k:v for k,v in payload.items() if k in ('slug','name','season','organizer','description','rules','map_pool','team_limit','config')})
@@ -132,6 +140,7 @@ def create_competition(payload: CompetitionCreate, db: Session = Depends(db_sess
 @router.patch('/competitions/{key}')
 def edit_competition(key: str, payload: dict, db: Session = Depends(db_session)):
     c = competition(db, key, True)
+    if 'config' in payload:payload['config']=presentation_config({**c.config,**payload['config']})
     if payload.get('status',c.status) not in ('draft','roster_preparation','scheduling','ongoing','completed','archived'):fail('STATUS','无效赛事状态')
     if c.published and payload.get('status')=='draft':fail('STATUS','已发布赛事不能退回草稿；结束后可归档',409)
     if payload.get('team_limit',c.team_limit) not in range(2,33):fail('TEAM_LIMIT','队伍上限须在2至32之间')

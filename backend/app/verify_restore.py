@@ -1,7 +1,7 @@
 from sqlalchemy import select, func
-from .db import Session, Registration, Match, Advancement, ResultPage, ResultPlacement, ResultPathMatch, Sponsor, CompetitionPartner, Prize, PrizeAllocation, ResultRelease
+from .db import Session, Registration, Match, Advancement, ResultPage, ResultPlacement, ResultPathMatch, Sponsor, CompetitionPartner, Prize, PrizeAllocation, ResultRelease, ResultTestMatch, SeedBatch, SeedEntity
 with Session() as db:
-    for model in (Registration, Match, Advancement, ResultPage, ResultPlacement, ResultPathMatch, Sponsor, CompetitionPartner, Prize, PrizeAllocation, ResultRelease):
+    for model in (Registration, Match, Advancement, ResultPage, ResultPlacement, ResultPathMatch, Sponsor, CompetitionPartner, Prize, PrizeAllocation, ResultRelease, ResultTestMatch, SeedBatch, SeedEntity):
         print(model.__tablename__, db.scalar(select(func.count()).select_from(model)))
     for edge in db.scalars(select(Advancement)):
         assert db.get(Match,edge.source) and db.get(Match,edge.target)

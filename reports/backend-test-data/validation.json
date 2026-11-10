@@ -1,0 +1,49 @@
+{
+  "date": "2026-11-10",
+  "branch": "codex/backend-test-data",
+  "backend": {
+    "passed": 50,
+    "skipped": 1
+  },
+  "frontend_regression": {
+    "passed": 78,
+    "skipped": 4
+  },
+  "official_results_real_api": {
+    "passed": 1
+  },
+  "backend_data_real_api": {
+    "passed": 1,
+    "widths": [
+      1920,
+      1600,
+      1599,
+      1280,
+      1051,
+      1050,
+      768,
+      761,
+      760,
+      390,
+      381,
+      380,
+      360,
+      320
+    ],
+    "champion": "Poppin'Party",
+    "teams": 4,
+    "equipment": 15,
+    "commemorative": 20
+  },
+  "migration": {
+    "fresh": true,
+    "002_to_004": true,
+    "003_to_004": true
+  },
+  "production_modified": false,
+  "builds": {
+    "api": true,
+    "demo_reference": true
+  },
+  "persistence_after_engine_restart": true
+}

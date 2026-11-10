@@ -105,8 +105,8 @@ def logout(response: Response, session=Depends(authenticated), db: Session = Dep
     response.delete_cookie('session')
     return {'data': True}
 
-from . import roster, tournaments, results, public, content, page_checks, final_results
-for module in (roster, tournaments, results, public, content, page_checks, final_results):
+from . import roster, tournaments, results, public, content, page_checks, final_results, test_data
+for module in (roster, tournaments, results, public, content, page_checks, final_results, test_data):
     app.include_router(module.router)
 
 from pathlib import Path

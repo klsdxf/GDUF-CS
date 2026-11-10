@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {ref,computed,watch,nextTick,onUnmounted} from 'vue'
 import {useRoute,useRouter} from 'vue-router'
-import {renderDemo,demoDialog,demoAction} from './redesign/demo'
+
 import {loadPublic,renderApi,teamDetail,article,liveBody,base} from './redesign/data'
 import {api} from './api'
 import {classifyPublicRoute,notFound,updatePageMeta,resolveLiveAction,escape,responsiveImages} from './redesign/presentation'
@@ -10,12 +10,16 @@ import Results from './Results.vue'
 import './redesign/reference.css'
 
 const route=useRoute(),router=useRouter()
-const mode=import.meta.env.VITE_PUBLIC_DATA_MODE||'demo'
+const mode=import.meta.env.VITE_PUBLIC_DATA_MODE||'api'
 if(!['demo','api'].includes(mode))throw new Error('VITE_PUBLIC_DATA_MODE 必须为 demo 或 api')
 const previousBackground=document.body.style.backgroundColor
 document.body.style.backgroundColor='#101216'
 const isResults=computed(()=>route.path==='/results'||route.path.startsWith('/results/'))
 const resultsView=ref<any>(),resultsCompetition=ref<any>(null)
+let reference:typeof import('./redesign/demo')|null=null
+const renderDemo=(...args:Parameters<typeof import('./redesign/demo').renderDemo>)=>reference?.renderDemo(...args)||''
+const demoDialog=(kind:string,id:string)=>reference?.demoDialog(kind,id)
+const demoAction=(action:string,value:any)=>reference?.demoAction(action,value)
 const demo=mode==='demo',revision=ref(0),season=ref('all'),map=ref(0)
 const model=ref<any>({competitions:[],news:[]}),loading=ref(false),error=ref(''),dialog=ref<HTMLDialogElement>(),dialogTitle=ref(''),dialogBody=ref('')
 const liveMatchId=ref('')
@@ -43,7 +47,7 @@ async function syncDialog(){
  else if(route.path.endsWith('/live'))result={title:'直播与回放',body:liveBody(liveRows.value,liveState.value,liveMatchId.value)}
  if(ticket!==dialogSequence)return
  if(result)await open(result.title,result.body)
- else await open('内容不存在','<p>该示例或内容不存在。</p>')
+ else await open('内容不存在','<p>内容不存在或尚未公开。</p>')
 }
 async function loadLive(force=false){
  if(demo)return
@@ -55,7 +59,7 @@ async function loadLive(force=false){
  try{const rows=await api(key+'/live');if(ticket!==sequence)return;liveRows.value=rows;liveCache.set(key,rows);liveState.value='ready'}catch{if(ticket!==sequence)return;liveRows.value=[];liveState.value='error'}
  if(route.path.endsWith('/live'))await syncDialog()
 }
-async function load(){if(isResults.value){sequence++;loading.value=false;error.value='';missing.value=false;dialog.value?.close();return}const ticket=++sequence;error.value='';missing.value=!classifyPublicRoute(route.path,demo);liveRows.value=[];liveState.value=demo?'ready':'loading';updatePageMeta(route.path,missing.value);if(missing.value){dialog.value?.close();loading.value=false;return}if(demo){await syncDialog();return}loading.value=true;model.value={competitions:[],news:[]};try{const result=await loadPublic(route.path);if(ticket===sequence){model.value=result;void loadLive();await syncDialog()}}catch(err:any){if(ticket===sequence){missing.value=err.status===404;error.value=missing.value?'':err.message;dialog.value?.close();updatePageMeta(route.path,missing.value,missing.value?'':'服务暂不可用')}}finally{if(ticket===sequence)loading.value=false}}
+async function load(){if(isResults.value){sequence++;loading.value=false;error.value='';missing.value=false;dialog.value?.close();return}const ticket=++sequence;error.value='';missing.value=!classifyPublicRoute(route.path,demo);liveRows.value=[];liveState.value=demo?'ready':'loading';updatePageMeta(route.path,missing.value);if(missing.value){dialog.value?.close();loading.value=false;return}if(import.meta.env.VITE_PUBLIC_DATA_MODE==='demo'&&demo){reference=await import('./redesign/demo');revision.value++;await syncDialog();return}loading.value=true;model.value={competitions:[],news:[]};try{const result=await loadPublic(route.path);if(ticket===sequence){model.value=result;void loadLive();await syncDialog()}}catch(err:any){if(ticket===sequence){missing.value=err.status===404;error.value=missing.value?'':err.message;dialog.value?.close();updatePageMeta(route.path,missing.value,missing.value?'':'服务暂不可用')}}finally{if(ticket===sequence)loading.value=false}}
 watch(()=>route.path,(_path,oldPath)=>{map.value=0;if(!route.path.endsWith('/live')&&!route.path.startsWith('/matches/'))liveMatchId.value='';transient.value=false;dialog.value?.close();load();if(!modalRoute.value&&!oldPath?.match(/^(\/announcements\/|\/competitions\/[^/]+\/(teams\/[^/]+|live)$)/))window.scrollTo({top:0})},{immediate:true})
 function close(){dialog.value?.close();dialogSequence++;if(modalRoute.value){const to=returnTo.value||defaultReturn();const hadSource=!!returnTo.value;returnTo.value='';if(hadSource&&window.history.state.back===to)router.back();else router.replace(to)}else transient.value=false}
 async function live(){if(route.path.startsWith('/matches/'))liveMatchId.value=model.value.detail?.id||'';if(cbase.value==='/competitions'){transient.value=true;await open('直播与回放',liveBody([]));return}returnTo.value=route.fullPath;router.push(cbase.value+'/live')}
@@ -74,7 +78,7 @@ async function click(event:MouseEvent){
  if(d.team!==undefined){returnTo.value=route.fullPath;router.push(cbase.value+'/teams/'+d.team)}
  if(d.action==='retry-live')await loadLive(true)
  if(d.action==='live')await live()
- if(d.action==='credits'){transient.value=true;await open('预览与素材说明',`<h2>关于这份预览</h2><p>${demo?'赛事、队名、昵称、日期和比分均为设计演示，公开前台不连接业务 API。':'公开内容通过现有 API 读取，以管理员发布结果为准。'}</p><p>游戏截图来自 Valve 的 <a href="https://store.steampowered.com/app/730/CounterStrike_2/" target="_blank" rel="noopener">Counter-Strike 2 官方商店页面</a>，地图配图为版式占位，不保证对应地图实景。</p><p>展示字体已保存在本地；中文使用系统字体。</p>`)}
+ if(d.action==='credits'){transient.value=true;await open('素材说明',`<h2>素材与公开信息</h2><p>${demo?'赛事、队名、昵称、日期和比分均为设计演示，公开前台不连接业务 API。':'公开内容通过现有 API 读取，以管理员发布结果为准。'}</p><p>游戏截图来自 Valve 的 <a href="https://store.steampowered.com/app/730/CounterStrike_2/" target="_blank" rel="noopener">Counter-Strike 2 官方商店页面</a>，地图配图为版式占位，不保证对应地图实景。</p><p>展示字体已保存在本地；中文使用系统字体。</p>`)}
 }
 function keys(event:KeyboardEvent){const t=event.target as HTMLElement;if(t.matches('[role=tab]')&&['ArrowLeft','ArrowRight'].includes(event.key)){event.preventDefault();const tabs=Array.from(document.querySelectorAll<HTMLElement>('.public-site [role=tab]')),i=tabs.indexOf(t);tabs[(i+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length]?.click()}}
 function backdrop(event:MouseEvent){if(event.target!==dialog.value)return;const rect=dialog.value!.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)close()}
@@ -88,7 +92,7 @@ onUnmounted(()=>{document.body.style.backgroundColor=previousBackground;sequence
  <header class="header"><a class="brand" href="/" aria-label="GDUF CS 首页"><span class="brand-symbol">G<span>/</span></span><span>GDUF<span class="brand-cs">CS</span><small class="brand-spacer" aria-hidden="true">&nbsp;</small></span></a><nav class="main-nav" aria-label="主导航"><a v-for="n in [['home','首页','/'],['events','赛事','/competitions'],['schedule','赛程',cbase==='/competitions'?cbase:cbase+'/schedule'],['teams','战队',cbase==='/competitions'?cbase:cbase+'/teams'],['results','最终排名','/results'],['news','公告','/announcements']]" :key="n[0]" :href="n[2]" :class="{active:active===n[0]}" :aria-current="active===n[0]?'page':undefined">{{n[1]}}</a></nav><button v-if="isResults" class="watch" @click.stop="resultsView?.replay()"><span class="play-small">▷</span> 赛事回顾 <span>↗</span></button><button v-else class="watch" :data-tone="liveAction.tone" data-action="live"><span class="play-small">▷</span> {{liveAction.label}} <span>↗</span></button></header>
  <div v-if="error" class="empty-state" role="alert">{{error}} <button class="btn" @click="load">重试</button></div>
  <main :aria-busy="loading"><Results v-if="isResults" ref="resultsView" @competition="resultsCompetition=$event"/><div v-else-if="loading" class="empty-state">正在加载赛事信息…</div><div v-else v-html="html"></div><Teleport defer to="#public-bracket" v-if="!demo&&!loading&&!error&&route.path.endsWith('/schedule')&&route.query.view==='bracket'"><div><p v-if="!bracketStages.length" class="empty-state">暂无已发布阶段</p><section v-for="stage in bracketStages" :key="stage.id"><h2>{{stage.name}}</h2><Bracket :stage-id="stage.id" /></section></div></Teleport></main>
- <footer class="footer"><div><a class="footer-brand" href="/">GDUF CS<span> / </span></a><p aria-hidden="true">&nbsp;</p></div><div class="footer-links"><a href="/competitions">全部赛事</a><a :href="cbase==='/competitions'?cbase:cbase+'/rules'">赛事规则</a><button data-action="credits">素材说明</button><button v-if="isResults" @click.stop="resultsView?.download()">下载此预览</button><a v-else href="/admin/login">管理</a></div><div class="footer-note">{{isResults?(demo?'最终排名 · 整合设计预览':'最终排名 · 正式发布'):demo?'前端概念预览 · 示例数据':'赛事公开信息 · 真实数据'}}<br>{{isResults&&demo?'虚构示例 · 不代表真实赛事结果':demo?'不连接项目接口，不代表真实赛事安排':'以管理员正式发布信息为准'}}</div></footer>
+ <footer class="footer"><div><a class="footer-brand" href="/">GDUF CS<span> / </span></a><p aria-hidden="true">&nbsp;</p></div><div class="footer-links"><a href="/competitions">全部赛事</a><a :href="cbase==='/competitions'?cbase:cbase+'/rules'">赛事规则</a><button data-action="credits">素材说明</button><button v-if="isResults" @click.stop="resultsView?.download()">{{demo?'下载此预览':'下载排名页面'}}</button><a v-else href="/admin/login">管理</a></div><div class="footer-note">{{isResults?(demo?'最终排名 · 整合设计预览':'最终排名 · 赛事公开信息'):demo?'前端概念预览 · 示例数据':'赛事公开信息'}}<br>{{isResults&&demo?'虚构示例 · 不代表真实赛事结果':demo?'不连接项目接口，不代表真实赛事安排':'以管理员正式发布信息为准'}}</div></footer>
  <dialog ref="dialog" id="dialog" aria-labelledby="dialog-label" @cancel.prevent="close" @click="backdrop"><div class="dialog-top"><span id="dialog-label">{{dialogTitle}}</span><button id="close-dialog" aria-label="关闭弹窗" @click="close">×</button></div><div id="dialog-body" v-html="dialogBody"></div></dialog>
 </div>
 </template>

@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from typing import Literal
 
 class Login(BaseModel):
     username:str=Field(min_length=1,max_length=80)
@@ -19,7 +20,15 @@ class CompetitionCreate(BaseModel):
     team_limit:int=Field(default=32,ge=2,le=32)
     config:dict=Field(default_factory=dict)
 
-from typing import Literal
+
+class CompetitionPresentation(BaseModel):
+    hero_title_lines:list[str]=Field(default_factory=list,max_length=2)
+    poster_label:str=Field(default='',max_length=80)
+    poster_asset_key:Literal['cs2-1','cs2-2','cs2-3']='cs2-1'
+    starts_on:str=Field(default='',max_length=10)
+    ends_on:str=Field(default='',max_length=10)
+    date_label:str=Field(default='',max_length=80)
+    display_name:str=Field(default='',max_length=200)
 
 class ResultVersion(BaseModel):
     expected_version:int=Field(ge=1)
@@ -31,6 +40,7 @@ class ResultDisplay(BaseModel):
     seal_serial:str=Field(default='',max_length=20)
 
 class ResultDraftWrite(ResultVersion):
+    result_kind:Literal['official','test']|None=None
     final_stage_id:str|None=None
     final_match_id:str|None=None
     third_place_match_id:str|None=None

@@ -15,6 +15,10 @@ def upgrade():
         keys=sa.inspect(bind).get_unique_constraints(table)+sa.inspect(bind).get_indexes(table)
         if not any(k['column_names']==['id','competition_id'] for k in keys):
             op.create_index('uq_'+table+'_id_competition',table,['id','competition_id'],unique=True)
+    # This migration historically uses live metadata. New nullable provenance
+    # references therefore need their parent when upgrading a genuine 002 DB.
+    if 'seed_batches' in Base.metadata.tables:
+        Base.metadata.tables['seed_batches'].create(bind,checkfirst=True)
     Base.metadata.create_all(op.get_bind(),tables=[Base.metadata.tables[t] for t in TABLES])
     if 'uq_presenting_partner' not in {x['name'] for x in sa.inspect(bind).get_indexes('competition_partners')}:op.create_index('uq_presenting_partner','competition_partners',['competition_id'],unique=True,sqlite_where=sa.text("tier = 'presenting'"),postgresql_where=sa.text("tier = 'presenting'"))
 def downgrade():

@@ -79,6 +79,10 @@ jobs:
       - name: Back up database and image volume
         run: |
           docker compose exec -T api python -c "from PIL import Image; Image.new('RGB',(16,16),'red').save('/app/storage/media/acceptance.webp','WEBP')"
+          curl --fail http://127.0.0.1:8080/media/acceptance.webp -o /tmp/served-acceptance.webp
+          docker compose exec -T api sha256sum /app/storage/media/acceptance.webp | cut -d' ' -f1 > /tmp/media-source.sha
+          sha256sum /tmp/served-acceptance.webp | cut -d' ' -f1 > /tmp/media-http.sha
+          diff /tmp/media-source.sha /tmp/media-http.sha
           bash scripts/backup.sh backups/ci
           docker compose exec -T api sha256sum /app/storage/media/acceptance.webp | cut -d' ' -f1 > /tmp/source-image.sha
       - name: Verify IP certificate bootstrap configuration

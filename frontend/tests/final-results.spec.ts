@@ -1,7 +1,46 @@
 import {test,expect} from '@playwright/test'
 import {pathToFileURL} from 'node:url'
 import {mkdirSync} from 'node:fs'
+import {expectSealMotion} from './seal-motion'
 test.use({video:'on'})
+for(const url of ['/results','/results/autumn'])test(`seal responds on first entry and after remount: ${url}`,async({page})=>{
+ const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message))
+ await page.addInitScript(()=>{
+  const bindings=new Set<EventTarget>();(window as any).__sealBindings=bindings
+  const add=EventTarget.prototype.addEventListener,remove=EventTarget.prototype.removeEventListener
+  EventTarget.prototype.addEventListener=function(type,...args){if(type==='pointermove'&&this instanceof Element&&this.matches('.v4-champion'))bindings.add(this);return add.call(this,type,...args)}
+  EventTarget.prototype.removeEventListener=function(type,...args){if(type==='pointermove')bindings.delete(this);return remove.call(this,type,...args)}
+ })
+ await page.setViewportSize({width:1280,height:900})
+ await page.goto(url)
+ await expectSealMotion(page)
+ for(const award of [1,2,0]){
+  await page.locator(`[data-award="${award}"]`).click()
+  await expectSealMotion(page)
+  expect(await page.evaluate(()=>(window as any).__sealBindings.size)).toBe(1)
+ }
+ await page.locator('.main-nav a').filter({hasText:'首页'}).click()
+ await expect(page.locator('.v5-seal-object')).toHaveCount(0)
+ expect(await page.evaluate(()=>(window as any).__sealBindings.size)).toBe(0)
+ await page.locator('.main-nav a').filter({hasText:'最终排名'}).click()
+ await expectSealMotion(page)
+ await page.reload()
+ await expectSealMotion(page)
+ expect(errors).toEqual([])
+})
+
+test('seal does not apply desktop tilt to a touch pointer',async({browser})=>{
+ const context=await browser.newContext({hasTouch:true,isMobile:true,viewport:{width:390,height:844}})
+ const page=await context.newPage()
+ await page.goto('/results');await expect(page.locator('.v5-seal-object')).toBeVisible()
+ expect(await page.evaluate(()=>matchMedia('(hover:hover) and (pointer:fine)').matches)).toBeFalsy()
+ await page.locator('.v5-seal-scene').dispatchEvent('pointermove',{clientX:100,clientY:100})
+ await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))))
+ expect(await page.locator('.v5-seal-object').evaluate(el=>el.style.getPropertyValue('--seal-rx'))).toBe('')
+ await page.locator('[data-award="1"]').click();await expect(page.locator('#product-title')).toHaveText('K75 机械键盘')
+ await context.close()
+})
+
 test('results navigation, search, awards, dialogs, motion and offline export',async({page})=>{
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message))
  await page.goto('/results');await expect(page.locator('.main-nav a.active')).toHaveText('最终排名')

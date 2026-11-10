@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {ref,computed,watch,nextTick,onUnmounted} from 'vue'
+import {ref,computed,watch,nextTick,onMounted,onUnmounted} from 'vue'
 import {useRoute,useRouter} from 'vue-router'
 import {api} from './api'
 import {demoData,render,score,teamName,awards,type ResultDTO} from './results/render'
@@ -14,6 +14,7 @@ const data=ref<ResultDTO|null>(null),loading=ref(true),error=ref(''),missing=ref
 const demo=!props.previewData&&(import.meta.env.VITE_PUBLIC_DATA_MODE||'demo')==='demo'
 const html=computed(()=>data.value?render(data.value,selected.value,demo):'')
 let sequence=0,opener:HTMLElement|null=null,dispose=()=>{}
+let syncSequence=0,unmounted=false
 async function load(){const id=++sequence;loading.value=true;error.value='';missing.value=false;data.value=null
  try{if(props.previewData)data.value=props.previewData
  else if(demo){if(route.params.pathMatch&&route.path!=='/results'&&route.path!=='/results/autumn')throw Object.assign(new Error('结果不存在'),{status:404});data.value=demoData()}
@@ -25,13 +26,15 @@ async function load(){const id=++sequence;loading.value=true;error.value='';miss
 watch(()=>route.fullPath,()=>{if(route.query.edition){router.replace('/results/'+encodeURIComponent(String(route.query.edition)));return}selected.value=0;query.value='';load()},{immediate:true})
 watch(()=>props.previewData,load)
 function filter(){const rows=root.value?.querySelectorAll<HTMLElement>('[data-team]');let n=0;rows?.forEach(r=>{r.hidden=!r.dataset.team!.toLowerCase().includes(query.value.trim().toLowerCase());if(!r.hidden)n++});const count=root.value?.querySelector('#team-count');if(count)count.textContent=query.value?`找到 ${n} 支队伍`:`${n} 支${demo?'示例':''}队伍`;const empty=root.value?.querySelector<HTMLElement>('#empty');if(empty)empty.hidden=n>0}
-function animate(){dispose();const el=root.value;if(!el)return;const hero=el.querySelector<HTMLElement>('.v4-champion'),scene=el.querySelector<HTMLElement>('.v5-seal-scene'),object=el.querySelector<HTMLElement>('.v5-seal-object');if(!hero||!scene||!object)return
+function animate(){dispose();dispose=()=>{};const el=root.value;if(!el)return;const hero=el.querySelector<HTMLElement>('.v4-champion'),scene=el.querySelector<HTMLElement>('.v5-seal-scene'),object=el.querySelector<HTMLElement>('.v5-seal-object');if(!hero||!scene||!object)return
  let frame=0;const fine=matchMedia('(hover:hover) and (pointer:fine)');const move=(ev:PointerEvent)=>{if(!fine.matches||document.hidden||frame)return;frame=requestAnimationFrame(()=>{const r=hero.getBoundingClientRect();hero.style.setProperty('--light-x',((ev.clientX-r.left)/r.width*100)+'%');hero.style.setProperty('--light-y',((ev.clientY-r.top)/r.height*100)+'%');const s=scene.getBoundingClientRect();object.style.setProperty('--seal-rx',(7-((ev.clientY-s.top)/s.height-.5)*12)+'deg');object.style.setProperty('--seal-ry',(-13+((ev.clientX-s.left)/s.width-.5)*18)+'deg');frame=0})};const leave=()=>{object.style.removeProperty('--seal-rx');object.style.removeProperty('--seal-ry')}
  hero.addEventListener('pointermove',move,{passive:true});scene.addEventListener('pointerleave',leave)
  const observer=new IntersectionObserver(entries=>entries.forEach(entry=>{if(entry.isIntersecting){entry.target.classList.add('v5-reveal');observer.unobserve(entry.target)}}),{threshold:.12});el.querySelectorAll('.v4-runners article,.v4-road,.v4-section-head,.v4-equipment-grid,.v4-presenting').forEach(x=>observer.observe(x))
  dispose=()=>{cancelAnimationFrame(frame);observer.disconnect();hero.removeEventListener('pointermove',move);scene.removeEventListener('pointerleave',leave)}
 }
-watch(html,async()=>{await nextTick();const search=root.value?.querySelector<HTMLInputElement>('#search');if(search)search.value=query.value;filter();animate()})
+async function syncResultDOM(){const ticket=++syncSequence;await nextTick();if(unmounted||ticket!==syncSequence||!root.value)return;const search=root.value.querySelector<HTMLInputElement>('#search');if(search)search.value=query.value;filter();animate()}
+onMounted(syncResultDOM)
+watch(html,syncResultDOM)
 async function open(t:string,b:string,source?:HTMLElement){title.value=t;body.value=b;opener=source||document.activeElement as HTMLElement;await nextTick();dialog.value?.showModal()}
 function close(){dialog.value?.close();opener?.focus()}
 async function replay(){if(!data.value)return;const rows=demo?[]:await api('/competitions/'+encodeURIComponent(data.value.competition.slug)+'/live');await open('赛事回顾',rows.filter((r:any)=>liveUrl(r.replay_url)).map((r:any)=>`<p><a href="${e(liveUrl(r.replay_url))}" target="_blank" rel="noopener">观看回放 ↗</a></p>`).join('')||'<h2>精彩，留给回放。</h2><p>本届暂无已发布回放。</p>')}
@@ -64,7 +67,7 @@ async function download(){if(!data.value)return;const d=data.value
 }
 defineExpose({replay,download})
 const timer=setInterval(()=>{if(!demo&&!props.previewData&&!document.hidden)load()},30000)
-onUnmounted(()=>{sequence++;dispose();clearInterval(timer)})
+onUnmounted(()=>{unmounted=true;syncSequence++;sequence++;dispose();dispose=()=>{};clearInterval(timer)})
 </script>
 <template>
 <div ref="root" @click="click" @keydown="keys" @input="query=($event.target as HTMLInputElement).value;filter()">

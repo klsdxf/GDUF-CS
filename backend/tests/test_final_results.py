@@ -106,6 +106,28 @@ def test_double_reset_and_full_field(client):
     assert len(call(client,b+'/preview')['champion_path'])>=3
 
 
+def test_allocated_prize_can_publish_with_provider_pending(client):
+    c,_,_,b,p=prepare(client)
+    p=add_awards(client,c,b,p,tier='official')
+    prize=call(client,f'/admin/competitions/{c["id"]}/prizes')[0]
+    changed=call(client,'/admin/prizes/'+prize['id'],'patch',{
+        **prize,'provider_partner_id':None,'expected_version':p['version'],
+    })
+    assert changed['provider_partner_id'] is None
+    p=call(client,b+'/draft')
+    validation=call(client,b+'/validate','post',{'expected_version':p['version']})
+    assert not validation['blocking_errors']
+    response=client.post('/api/v1'+b+'/publish',json={
+        'expected_version':p['version'],'expected_source_fingerprint':validation['source_fingerprint'],
+        'reason':'奖品提供方待赞助',
+    },headers={'Idempotency-Key':'pending-provider'})
+    assert response.status_code==200,response.text
+    public=call(client,'/results/latest')
+    assert public['prizes'][0]['provider_partner_id'] is None
+    assert public['support_totals']['equipment']==20
+    assert public['partners'][0]['id']==prize['provider_partner_id']
+
+
 import pytest
 import os
 @pytest.mark.parametrize('count',[16,32])

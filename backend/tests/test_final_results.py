@@ -14,9 +14,9 @@ def prepare(client,kind='single',count=4,config=None,reset_trigger=False):
     p=call(client,b+'/calculate','post',{'expected_version':p['version']})
     return c,ids,s,b,p
 
-def add_awards(client,c,b,p):
+def add_awards(client,c,b,p,tier='presenting'):
     sponsor=call(client,'/admin/sponsors','post',{'name':'实际品牌','english_name':'REAL','introduction':'支持赛事'})
-    partner=call(client,f'/admin/competitions/{c["id"]}/partners','post',{'expected_version':p['version'],'sponsor_id':sponsor['id'],'tier':'presenting','published':True})
+    partner=call(client,f'/admin/competitions/{c["id"]}/partners','post',{'expected_version':p['version'],'sponsor_id':sponsor['id'],'tier':tier,'published':True})
     p=call(client,b+'/draft')
     prize=call(client,f'/admin/competitions/{c["id"]}/prizes','post',{'expected_version':p['version'],'provider_partner_id':partner['id'],'name':'正式奖品','unit':'件','category':'equipment','builtin_illustration_key':'mouse'})
     p=call(client,b+'/draft')
@@ -65,6 +65,37 @@ def test_incomplete_source_changed_and_cross_edition(client):
     call(client,b+'/placements','put',{'expected_version':p['version'],'items':[{'registration_id':'other-edition','rank_from':1,'rank_to':1,'team_display_version':1,'recipient_count':5}]},status=422)
     call(client,'/admin/sponsors','post',{'name':'x','logo_url':'https://example.com/a.svg'},status=422)
     assert client.get('/api/v1/admin/competitions/'+c['id']+'/final-results/preview',cookies={'session':'invalid'}).status_code==401
+
+
+def test_same_tier_partners_publish_in_stable_order_and_preserve_snapshot(client):
+    c,_,_,b,p=prepare(client)
+    p=add_awards(client,c,b,p,tier='official')
+    partner_path=f'/admin/competitions/{c["id"]}/partners'
+    original=call(client,partner_path)[0]
+    for name,published,active in [('第二品牌',True,True),('未公开',False,True),('已停用',True,False)]:
+        brand=call(client,'/admin/sponsors','post',{'name':name,'active':active})
+        call(client,partner_path,'post',{'sponsor_id':brand['id'],'published':published,'expected_version':p['version']})
+        p=call(client,b+'/draft')
+    preview=call(client,b+'/preview')
+    assert preview['presenting_partner'] is None
+    assert {item['name'] for item in preview['partners']}=={'实际品牌','第二品牌'}
+    assert [item['id'] for item in preview['partners']]==sorted(item['id'] for item in preview['partners'])
+    validation=call(client,b+'/validate','post',{'expected_version':p['version']})
+    assert not validation['blocking_errors']
+    response=client.post('/api/v1'+b+'/publish',json={
+        'expected_version':p['version'],'expected_source_fingerprint':validation['source_fingerprint'],
+        'reason':'发布同级赞助商',
+    },headers={'Idempotency-Key':'peer-partners'})
+    assert response.status_code==200,response.text
+    p=call(client,b+'/draft')
+    path='/admin/competition-partners/'+original['id']
+    call(client,path,'patch',{**original,'expected_version':p['version'],'display_order':1.5},status=422)
+    call(client,path,'patch',{**original,'expected_version':p['version'],'published':False,'display_order':10})
+    p=call(client,b+'/draft')
+    validation=call(client,b+'/validate','post',{'expected_version':p['version']})
+    assert any('正式奖品' in error['message'] and '提供方' in error['message'] for error in validation['blocking_errors'])
+    assert call(client,'/results/latest')['partners']==preview['partners']
+    assert [item['name'] for item in call(client,b+'/preview')['partners']]==['第二品牌']
 
 
 def test_double_reset_and_full_field(client):

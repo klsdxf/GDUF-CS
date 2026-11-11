@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {ref,watch} from 'vue'
+import {computed,ref,watch} from 'vue'
 import {api} from './api'
 import Results from './Results.vue'
 const props=defineProps<{competitionId:string;dataOrigin?:string;teams:any[];stages:any[];matches:any[]}>()
@@ -8,7 +8,9 @@ const draft=ref<any>(null),error=ref(''),busy=ref(false),validation=ref<any>(),r
 const sponsors=ref<any[]>([]),partners=ref<any[]>([]),prizes=ref<any[]>([]),allocations=ref<any[]>([])
 const config=ref<any>({display_meta:{},seal_mode:'monogram'}),placements=ref<any[]>([]),path=ref<string[]>([])
 const sponsor=ref<any>({active:true,name:'',english_name:'',logo_url:'',introduction:''})
-const partner=ref<any>({sponsor_id:'',tier:'official',category:'',published:true,display_order:0})
+const newPartner=()=>({sponsor_id:'',tier:'official',category:'',support_description:'',published:false,display_order:0})
+const partner=ref<any>(newPartner())
+const partnerRows=computed(()=>partners.value.map(row=>({...row,brand:sponsors.value.find(s=>s.id===row.sponsor_id)})))
 const prize=ref<any>({name:'',provider_partner_id:'',category:'equipment',model_code:'',unit:'件',description:'',builtin_illustration_key:'',image_url:'',active:true})
 const base=()=>'/admin/competitions/'+props.competitionId
 const endpoint=()=>base()+'/final-results'
@@ -19,12 +21,18 @@ async function refresh(){validation.value=null
  if(draft.value?.result_kind==='test')testMatches.value=(await api(endpoint()+'/test-matches')).items;else testMatches.value=[]
  if(draft.value&&placements.value.length){const d=await api(endpoint()+'/preview');allocations.value=d.allocations.map((a:any)=>({...a}))}else allocations.value=[]
 }
-watch(()=>props.competitionId,()=>run(refresh),{immediate:true})
+watch(()=>props.competitionId,()=>{partner.value=newPartner();return run(refresh)},{immediate:true})
 async function save(){await run(async()=>{await api(endpoint()+'/draft','PUT',{...config.value,expected_version:draft.value?.version||1});await refresh()})}
 async function mutate(suffix:string,method:string,payload:any){await api(endpoint()+suffix,method,{...payload,expected_version:draft.value.version});await refresh()}
 async function upload(ev:Event,obj:any,key:string){const f=(ev.target as HTMLInputElement).files?.[0];if(!f)return;await run(async()=>{const fd=new FormData();fd.append('file',f);obj[key]=(await api('/admin/assets','POST',fd)).url})}
 const name=(id:string)=>props.teams.find(t=>t.id===id)?.name||id
 async function showPreview(){await run(async()=>preview.value=await api(endpoint()+'/preview'))}
+async function savePartner(){await run(async()=>{
+ const entry=partner.value
+ await api(entry.id?'/admin/competition-partners/'+entry.id:base()+'/partners',entry.id?'PATCH':'POST',{...entry,expected_version:draft.value.version})
+ partner.value=newPartner()
+ await refresh()
+})}
 async function publish(){await run(async()=>{await api(endpoint()+'/publish','POST',{expected_version:draft.value.version,expected_source_fingerprint:validation.value.source_fingerprint,reason:reason.value}, {'Idempotency-Key':crypto.randomUUID()});await refresh()})}
 </script>
 <template>
@@ -46,7 +54,38 @@ async function publish(){await run(async()=>{await api(endpoint()+'/publish','PO
 <el-checkbox :model-value="m.maps!==null" @change="(v:any)=>m.maps=v?[]:null">已提供逐图成绩</el-checkbox><template v-if="m.maps!==null"><div v-for="(map,j) in m.maps" :key="j" class="toolbar"><el-input v-model="map.map_name" placeholder="地图"/><el-input-number v-model="map.score_a" :min="0"/><el-input-number v-model="map.score_b" :min="0"/><el-checkbox v-model="map.overtime">加时</el-checkbox><el-button @click="m.maps.splice(j,1)">移除地图</el-button></div><el-button @click="m.maps.push({map_name:'',score_a:13,score_b:8})">添加地图</el-button></template><el-button @click="testMatches.splice(i,1)">移除对局</el-button></article>
 <el-button @click="testMatches.push({source_key:'',label:'半决赛',match_kind:'semifinal',best_of:3,wins_a:2,wins_b:0,a_display_version:1,b_display_version:1,maps:null,champion_path_order:null})">添加测试对局</el-button><el-button @click="run(()=>mutate('/test-matches','PUT',{items:testMatches.map(m=>({...m,champion_path_order:m.champion_path_order||null}))}))">保存测试对局</el-button></template><template v-else><h2>冠军路径</h2><el-select v-model="path" multiple style="width:100%"><el-option v-for="m in matches.filter(m=>m.confirmed)" :key="m.id" :value="m.id" :label="m.code+' '+name(m.a)+' / '+name(m.b)"/></el-select><p>{{path.map(id=>matches.find(m=>m.id===id)?.code).join(' → ')}}</p><el-button @click="run(()=>mutate('/path','PUT',{items:path.map(id=>({match_id:id,stage_label:matches.find(m=>m.id===id)?.code}))}))">保存路径顺序</el-button>
 </template><h2>品牌库</h2><el-select placeholder="编辑已有品牌" @change="(id:string)=>sponsor={...sponsors.find(s=>s.id===id)}"><el-option v-for="s in sponsors" :key="s.id" :value="s.id" :label="s.name+(s.data_origin==='test'?'（示例／测试数据）':'')"/></el-select><div class="form-grid"><el-input v-model="sponsor.name" placeholder="品牌中文名"/><el-input v-model="sponsor.english_name" placeholder="英文名"/><el-input v-model="sponsor.official_url" placeholder="官网 HTTPS（可空）"/><el-input v-model="sponsor.introduction" type="textarea" placeholder="品牌介绍"/></div><label>上传品牌 Logo <input type="file" accept="image/png,image/jpeg,image/webp" @change="upload($event,sponsor,'logo_url')"></label><img v-if="sponsor.logo_url" :src="sponsor.logo_url" width="80" alt="品牌预览"><el-checkbox v-model="sponsor.active">启用</el-checkbox><el-button @click="run(async()=>{await api('/admin/sponsors'+(sponsor.id?'/'+sponsor.id:''),sponsor.id?'PATCH':'POST',{...sponsor,data_origin:props.dataOrigin,expected_version:sponsor.version});sponsor={name:'',active:true};await refresh()})">保存品牌</el-button>
-<h2>本届合作关系</h2><div class="toolbar"><el-select v-model="partner.sponsor_id" placeholder="选择品牌"><el-option v-for="s in sponsors" :key="s.id" :value="s.id" :label="s.name+(s.data_origin==='test'?'（示例／测试数据）':'')"/></el-select><el-select v-model="partner.tier"><el-option value="presenting" label="首席赞助商"/><el-option value="official" label="合作伙伴"/></el-select><el-input v-model="partner.category" placeholder="合作类别"/><el-input-number v-model="partner.display_order"/><el-checkbox v-model="partner.published">公开</el-checkbox><el-button @click="run(async()=>{await api(partner.id?'/admin/competition-partners/'+partner.id:base()+'/partners',partner.id?'PATCH':'POST',{...partner,expected_version:draft.version});partner={tier:'official',published:true};await refresh()})">保存合作项</el-button></div><el-button v-for="p in partners" :key="p.id" @click="partner={...p}">{{sponsors.find(s=>s.id===p.sponsor_id)?.name}} · {{p.tier}}</el-button>
+<h2>本届合作关系</h2>
+<el-table :data="partnerRows" empty-text="本届暂无合作品牌">
+ <el-table-column label="Logo" width="90"><template #default="{row}">
+  <img v-if="row.brand?.logo_url" class="partner-thumbnail" :src="row.brand.logo_url" :alt="row.brand.name"/>
+  <span v-else>未上传</span>
+ </template></el-table-column>
+ <el-table-column label="品牌" min-width="180"><template #default="{row}">
+  {{row.brand?.name}}<span v-if="row.brand?.data_origin==='test'">（示例／测试数据）</span>
+ </template></el-table-column>
+ <el-table-column prop="display_order" label="展示顺序" width="110"/>
+ <el-table-column label="公开状态" width="120"><template #default="{row}">
+  {{row.brand?.active===false?'品牌已停用':row.published?'已公开':'未公开'}}
+ </template></el-table-column>
+ <el-table-column label="操作" width="90"><template #default="{row}">
+  <el-button link type="primary" :aria-label="'编辑合作项 '+row.brand?.name" @click="partner={...partners.find(p=>p.id===row.id)}">编辑</el-button>
+ </template></el-table-column>
+</el-table>
+<el-form label-position="top" @submit.prevent="savePartner">
+ <div class="form-grid">
+  <el-form-item label="合作品牌">
+   <el-select v-model="partner.sponsor_id" placeholder="选择品牌" :disabled="!!partner.id">
+    <el-option v-for="s in sponsors" :key="s.id" :value="s.id" :label="s.name+(s.data_origin==='test'?'（示例／测试数据）':'')" :disabled="partners.some(p=>p.sponsor_id===s.id)&&partner.sponsor_id!==s.id"/>
+   </el-select>
+  </el-form-item>
+  <el-form-item label="展示顺序"><el-input-number v-model="partner.display_order" :precision="0" :step="1"/></el-form-item>
+  <el-form-item label="合作类别"><el-input v-model="partner.category"/></el-form-item>
+  <el-form-item label="本届合作说明"><el-input v-model="partner.support_description" type="textarea"/></el-form-item>
+ </div>
+ <el-checkbox v-model="partner.published">公开</el-checkbox>
+ <el-button native-type="submit" :disabled="!partner.sponsor_id||busy">保存合作项</el-button>
+ <el-button v-if="partner.id" @click="partner=newPartner()">添加合作项</el-button>
+</el-form>
 <h2>赛事奖品</h2><div class="form-grid"><el-input v-model="prize.name" placeholder="产品名称"/><el-input v-model="prize.model_code" placeholder="型号"/><el-input v-model="prize.unit" placeholder="单位"/><el-select v-model="prize.provider_partner_id" placeholder="提供方"><el-option v-for="p in partners" :key="p.id" :value="p.id" :label="sponsors.find(s=>s.id===p.sponsor_id)?.name"/></el-select><el-select v-model="prize.category"><el-option value="equipment" label="外设"/><el-option value="commemorative" label="纪念品"/></el-select><el-select v-model="prize.builtin_illustration_key" clearable placeholder="内置类型插画"><el-option v-for="x in ['headset','keyboard','mouse']" :key="x" :value="x" :label="x"/></el-select><el-input v-model="prize.description" type="textarea" placeholder="奖品描述"/></div><label>上传产品图 <input type="file" accept="image/png,image/jpeg,image/webp" @change="upload($event,prize,'image_url')"></label><img v-if="prize.image_url" :src="prize.image_url" width="100" alt="产品预览"><el-checkbox v-model="prize.active">启用</el-checkbox><el-button @click="run(async()=>{await api(prize.id?'/admin/prizes/'+prize.id:base()+'/prizes',prize.id?'PATCH':'POST',{...prize,expected_version:draft.version});prize={name:'',category:'equipment',unit:'件',active:true};await refresh()})">保存奖品</el-button><el-button v-for="z in prizes" :key="z.id" @click="prize={...z}">{{z.name}}</el-button>
 <h2>奖励分配</h2><div v-for="(a,i) in allocations" :key="i" class="toolbar"><el-select v-model="a.placement_id" placeholder="获奖队伍"><el-option v-for="p in placements" :key="p.id" :value="p.id" :label="name(p.registration_id)"/></el-select><el-select v-model="a.prize_id" placeholder="奖品"><el-option v-for="z in prizes" :key="z.id" :value="z.id" :label="z.name"/></el-select><el-select v-model="a.distribution"><el-option value="per_team" label="按队"/><el-option value="per_recipient" label="按人"/></el-select><label>总数 <el-input-number v-model="a.quantity" :min="1"/></label><label v-if="a.distribution==='per_recipient'">每人数 <el-input-number v-model="a.per_recipient_quantity" :min="1"/></label><el-button @click="allocations.splice(i,1)">移除</el-button></div><el-button @click="allocations.push({quantity:1,distribution:'per_team',per_recipient_quantity:1})">添加分配</el-button><el-button @click="run(()=>mutate('/allocations','PUT',{items:allocations}))">保存全部分配</el-button>
 <h2>预览与发布</h2><div class="toolbar"><el-button @click="showPreview">内部预览</el-button><el-button @click="run(async()=>validation=await api(endpoint()+'/validate','POST',{expected_version:draft.version}))">校验发布条件</el-button></div><div v-if="validation"><p>源哈希 {{validation.source_fingerprint}}</p><el-alert v-for="v in validation.blocking_errors" :key="v.message" :title="v.message" type="error" :closable="false"/><el-alert v-if="!validation.blocking_errors.length" title="可发布" type="success" :closable="false"/></div><el-input v-model="reason" placeholder="发布 / 修订 / 撤回原因"/><el-button type="primary" :disabled="busy||!reason||!validation||!!validation.blocking_errors.length" @click="publish">{{config.result_kind==='test'?'发布测试排名':'正式发布新版本'}}</el-button><el-button :disabled="!draft.current_release_id||!reason||busy" @click="run(()=>mutate('/withdraw','POST',{reason}))">撤回公开版本</el-button>
@@ -55,3 +94,13 @@ async function publish(){await run(async()=>{await api(endpoint()+'/publish','PO
 <el-dialog v-model="preview" title="内部预览（未公开）" width="95%" destroy-on-close><div v-if="preview?.champion&&preview?.final_match" class="public-site results-page v5-motion-on"><Results :preview-data="preview"/></div><p v-else>请先保存对局并生成候选名次。</p></el-dialog>
 </section>
 </template>
+<style scoped>
+.partner-thumbnail {
+  display: block;
+  width: 60px;
+  height: 36px;
+  padding: 3px;
+  background: #17191d;
+  object-fit: contain;
+}
+</style>

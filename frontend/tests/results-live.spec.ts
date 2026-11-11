@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test'
+import {readFileSync} from 'node:fs'
 import {expectSealMotion} from './seal-motion'
 test.skip(process.env.RESULTS_LIVE_E2E!=='1','isolated result API server required')
 test('real API administration previews publishes withdraws and republishes results',async({page})=>{
@@ -7,8 +8,30 @@ test('real API administration previews publishes withdraws and republishes resul
  await page.goto('/results');await expect(page.locator('main')).toContainText('最终排名待公布')
  await page.goto('/admin/login');await page.getByLabel('账号',{exact:true}).fill('results-admin');await page.getByLabel('密码',{exact:true}).fill('results-acceptance-only!');await page.getByRole('button',{name:'登录',exact:true}).click()
  await page.getByRole('button',{name:'最终排名与奖励',exact:true}).click();await expect(page.locator('main')).toContainText('暂无有效公开版本')
+ await page.getByPlaceholder('品牌中文名').fill('第二合作品牌')
+ await page.getByPlaceholder('英文名',{exact:true}).fill('SECOND')
+ await page.getByLabel('上传品牌 Logo').setInputFiles({
+  name:'logo.png',mimeType:'image/png',
+  buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aQ1EAAAAASUVORK5CYII=','base64'),
+ })
+ await expect(page.getByAltText('品牌预览')).toBeVisible()
+ await page.getByRole('button',{name:'保存品牌',exact:true}).click()
+ await page.getByText('选择品牌',{exact:true}).click()
+ await page.getByRole('option',{name:'第二合作品牌',exact:true}).click()
+ await page.getByLabel('展示顺序',{exact:true}).fill('20')
+ await page.getByLabel('本届合作说明').fill('赛事活动支持')
+ const publicCheckbox=page.getByRole('checkbox',{name:'公开',exact:true})
+ await expect(publicCheckbox).not.toBeChecked()
+ await page.getByRole('button',{name:'保存合作项',exact:true}).click()
+ const secondRow=page.getByRole('row').filter({hasText:'第二合作品牌'})
+ await expect(secondRow).toContainText('未公开')
+ await secondRow.getByRole('button',{name:'编辑合作项 第二合作品牌'}).click()
+ await publicCheckbox.press('Space')
+ await page.getByRole('button',{name:'保存合作项',exact:true}).click()
+ await expect(secondRow).toContainText('已公开')
  for(let i=0;i<2;i++){
   await page.getByRole('button',{name:'内部预览',exact:true}).click();await expect(page.locator('.el-dialog .v4-type h3')).toContainText('战队0')
+  await expect(page.locator('.el-dialog .results-partner')).toHaveCount(2)
   await expectSealMotion(page,page.locator('.el-dialog'));await page.locator('.el-dialog__headerbtn').click()
   await expect(page.locator('.el-dialog .v5-seal-object')).toHaveCount(0)
  }
@@ -17,13 +40,53 @@ test('real API administration previews publishes withdraws and republishes resul
  let release!:()=>void;const gate=new Promise<void>(resolve=>{release=resolve})
  await result.route('**/api/v1/competitions/test-cup/results',async route=>{await gate;await route.continue()})
  await result.goto('/results/test-cup');await expect(result.getByRole('status')).toContainText('正在加载最终排名');release()
- await expect(result.locator('.v4-type h3')).toContainText('战队0');await expect(result.locator('.v4-sponsor-wordmark')).toContainText('REAL');await expect(result.locator('main')).not.toContainText('木棉');await expect(result.locator('main')).not.toContainText('NEXCORE');await expect(result.locator('.results-table tr')).toHaveCount(5)
+ await expect(result.locator('.v4-type h3')).toContainText('战队0');await expect(result.locator('.results-partner').first()).toContainText('REAL');await expect(result.locator('main')).not.toContainText('木棉');await expect(result.locator('main')).not.toContainText('NEXCORE');await expect(result.locator('.results-table tr')).toHaveCount(5)
+ const logo=result.getByRole('img',{name:'第二合作品牌',exact:true})
+ await expect.poll(()=>logo.evaluate((img:HTMLImageElement)=>img.naturalWidth)).toBeGreaterThan(0)
+ const details=result.getByRole('button',{name:/SECOND.*合作支持详情/})
+ await details.click()
+ await expect(result.locator('#result-dialog')).toContainText('赛事活动支持')
+ await result.keyboard.press('Escape')
+ await expect(details).toBeFocused()
+ await expect(result.locator('.v4-product-brand')).toContainText('REAL')
+ for(const width of [1280,511,510,320]){
+  await result.setViewportSize({width,height:900})
+  const [first,second]=await result.locator('.results-partner').evaluateAll(items=>items.map(item=>item.getBoundingClientRect().top))
+  expect(first===second).toBe(width>510)
+  expect(await result.locator('.results-partners').evaluate(el=>el.scrollWidth<=el.clientWidth+1),String(width)).toBe(true)
+  expect(await result.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),String(width)).toBe(true)
+ }
+ await result.setViewportSize({width:1280,height:900})
  await expectSealMotion(result)
+ const downloadEvent=result.waitForEvent('download')
+ await result.getByRole('button',{name:'下载排名页面',exact:true}).click()
+ const file=await downloadEvent
+ const offlinePath=test.info().outputPath('sponsors-offline.html')
+ await file.saveAs(offlinePath)
+ const offline=await page.context().newPage()
+ await offline.route('**/*',route=>route.abort())
+ await offline.setContent(readFileSync(offlinePath,'utf8'))
+ await expect.poll(()=>offline.getByRole('img',{name:'第二合作品牌',exact:true}).evaluate((img:HTMLImageElement)=>img.naturalWidth)).toBeGreaterThan(0)
+ await offline.getByRole('button',{name:/SECOND.*合作支持详情/}).click()
+ await expect(offline.getByRole('dialog')).toContainText('赛事活动支持')
+ await offline.close()
  await result.unrouteAll({behavior:'wait'})
  await result.route('**/api/v1/competitions/test-cup/results',route=>route.fulfill({status:503,json:{error:{message:'结果服务暂不可用'}}}))
  await result.reload();await expect(result.getByRole('alert')).toContainText('结果服务暂不可用')
  await result.unrouteAll({behavior:'wait'});await result.getByRole('button',{name:'重试',exact:true}).click();await expectSealMotion(result)
  await page.bringToFront();await page.getByRole('button',{name:'撤回公开版本',exact:true}).click();await expect(page.locator('main')).toContainText('暂无有效公开版本');await result.reload();await expect(result.locator('main')).toContainText('页面不存在')
  await page.getByRole('button',{name:'校验发布条件',exact:true}).click();await page.getByRole('button',{name:'正式发布新版本',exact:true}).click();await expect(page.locator('main')).toContainText('已有公开版本');await result.reload();await expect(result.locator('.v4-type h3')).toContainText('战队0')
+ await result.route('**/api/v1/competitions/test-cup/results',async route=>{
+  const response=await route.fetch()
+  const {data}=await response.json()
+  const [first,second]=data.partners
+  delete data.partners
+  data.presenting_partner=first
+  data.official_partners=[{...second,logo_url:'/media/missing-sponsor.webp'}]
+  await route.fulfill({response,json:{data}})
+ })
+ await result.reload()
+ await expect(result.locator('.results-partner')).toHaveCount(2)
+ await expect(result.locator('.results-partner').last().locator('.results-partner-fallback')).toBeVisible()
  expect(errors).toEqual([])
 })

@@ -20,7 +20,7 @@ test('backend initialization, editable data, four-team V6 results and offline ex
  await pub.locator('.news-row').first().click();await expect(pub.locator('dialog')).toContainText('后端同步更新已验证。');await pub.keyboard.press('Escape')
  await pub.goto('/competitions/autumn');await expect(pub.locator('.event-facts')).toContainText('4 支队伍');await expect(pub.locator('.event-facts')).toContainText('进行中')
  await pub.goto('/results');await expect(pub.locator('.v4-type h3')).toContainText("Poppin'Party");await expect(pub.locator('.results-table tbody tr')).toHaveCount(4);await expect(pub.locator('.v4-road button')).toHaveCount(2)
- await expect(pub.locator('body')).not.toContainText('示例');await expect(pub.locator('body')).not.toContainText('虚构');await expect(pub.locator('.v4-sponsor-bottom')).toContainText('20')
+ await expect(pub.locator('body')).not.toContainText('示例');await expect(pub.locator('body')).not.toContainText('虚构');await expect(pub.locator('.results-partner')).toHaveCount(5);await expect(pub.locator('.v4-gift')).toContainText('20');await expect(pub.locator('.v4-equipment-note')).toContainText('15')
  await expectSealMotion(pub)
  await pub.locator('.v4-road button').first().click();await expect(pub.locator('#result-dialog')).toContainText('暂无逐图成绩');await expect(pub.locator('#result-dialog a')).toHaveCount(0);await pub.keyboard.press('Escape')
  await pub.locator('#search').fill("Poppin'Party");await expect(pub.locator('.results-table tbody tr:visible')).toHaveCount(1);await pub.locator('#search').fill('')

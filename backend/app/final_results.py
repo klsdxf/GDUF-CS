@@ -75,6 +75,20 @@ def public_match(db, m):
             'result_type':m.result.get('result_type','normal'),'wins_a':m.result.get('wins_a'), 'wins_b':m.result.get('wins_b'),
             'maps':m.result.get('maps',[]),'reason':m.result.get('reason',''),'source_kind':'match','detail_url':'/matches/'+m.id}
 
+PUBLIC_PARTNER_FIELDS = (
+    'english_name', 'logo_url', 'category', 'introduction',
+    'support_description', 'official_url', 'builtin_mark_key',
+)
+
+
+def partner_order(partner):
+    order = partner.data.get('display_order')
+    try:
+        return int(order) if order is not None else 0
+    except (ValueError, TypeError, OverflowError):
+        return 0
+
+
 def preview(db,c,p):
     ps=placements(db,p); out=[]
     for r in ps:
@@ -83,10 +97,15 @@ def preview(db,c,p):
                     'recipient_count':r.data.get('recipient_count',0),'source_method':r.data.get('source_method','calculated'),
                     'team':public_team(db,t,r.data.get('team_display_version',t.version))})
     partners=[]
-    for x in sorted(rows(db,CompetitionPartner,c.id),key=lambda x:x.data.get('display_order',0)):
+    for x in sorted(rows(db,CompetitionPartner,c.id),key=lambda x:(partner_order(x),x.id)):
         s=db.get(Sponsor,x.sponsor_id)
         if x.published and s.active:
-            partners.append({'id':x.id,'tier':x.tier,'name':s.name,**s.data,**x.data})
+            partners.append({**s.data,**x.data,'id':x.id,'tier':x.tier,'name':s.name,'display_order':partner_order(x)})
+    public_partners=[
+        {'id':x['id'],'name':x['name'],'display_order':x['display_order'],
+         **{k:x[k] for k in PUBLIC_PARTNER_FIELDS if k in x}}
+        for x in partners
+    ]
     prizes=[{'id':x.id,'name':x.name,'provider_partner_id':x.provider_partner_id,**x.data} for x in sorted(rows(db,Prize,c.id),key=lambda x:x.data.get('display_order',0)) if x.active]
     allocations=[{'id':x.id,'placement_id':x.placement_id,'prize_id':x.prize_id,'quantity':x.quantity,'registration_id':r.registration_id,**x.data} for r in ps for x in db.scalars(select(PrizeAllocation).where(PrizeAllocation.placement_id==r.id))]
     path=[]
@@ -99,7 +118,8 @@ def preview(db,c,p):
     totals={k:sum(a['quantity'] for a in allocations if any(z['id']==a['prize_id'] and z.get('category')==k for z in prizes)) for k in ('equipment','commemorative')}
     return {'schema_version':'1.0','competition':c_dto(c),'display':p.config.get('display_meta',{}),'champion':{**champion,'seal_mode':p.config.get('seal_mode','monogram')} if champion else None,
             'placements':out,'final_match':final_dto,'champion_path':path,'prizes':prizes,'allocations':allocations,
-            'presenting_partner':next((x for x in partners if x['tier']=='presenting'),None),'official_partners':[x for x in partners if x['tier']=='official'], 'support_totals':totals}
+            'partners':public_partners,'presenting_partner':next((x for x in partners if x['tier']=='presenting'),None),
+            'official_partners':[x for x in partners if x['tier']=='official'],'support_totals':totals}
 
 def final_match(db,c,p):
     s=same(db,Stage,p.config.get('final_stage_id'),c.id)
@@ -271,7 +291,7 @@ def validate(db,c,p):
         if first!=f.winner or second!=(f.b if f.winner==f.a else f.a):error('RESULT_NOT_FINAL','冠亚军必须与正式终局一致')
     dto=preview(db,c,p)
     if dto['champion'] and p.config.get('seal_mode')=='team_logo' and not dto['champion']['logo_url']:error('PUBLISH_INCOMPLETE','队标模式须上传冠军队标')
-    if not dto['champion'] or not dto['presenting_partner']:error('PUBLISH_INCOMPLETE','缺少冠军或已公开首席赞助商')
+    if not dto['champion']:error('PUBLISH_INCOMPLETE','缺少冠军')
     for x in ps:
         t=db.get(Registration,x.registration_id);v=x.data.get('team_display_version',t.version)
         count=len(list(db.scalars(select(Member).where(Member.registration_id==t.id,Member.version==v))))
@@ -282,12 +302,15 @@ def validate(db,c,p):
         elif x.data.get('recipient_count')!=count:error('AWARD_QUANTITY','领取人数与所选名单不符')
     for m in dto['champion_path'] if p.result_kind=='official' else []:
         if not f or m['winner_team_id']!=f.winner or not same(db,Match,m['id'],c.id).published:error('RESULT_NOT_FINAL','路径必须为冠军正式获胜比赛')
+    public_partner_ids = {x['id'] for x in dto['partners']}
+    prizes_by_id = {x['id']:x for x in dto['prizes']}
     for a in dto['allocations']:
         r=next(x for x in ps if x.id==a['placement_id'])
         if a.get('distribution')=='per_recipient' and a['quantity']!=r.data.get('recipient_count',0)*(a.get('per_recipient_quantity') or 0):error('AWARD_QUANTITY','按人分配数量不一致')
-        z=next((x for x in dto['prizes'] if x['id']==a['prize_id']),None)
+        z=prizes_by_id.get(a['prize_id'])
         if not z:error('AWARD_QUANTITY','分配引用已停用奖品')
-        elif z['provider_partner_id'] not in {x['id'] for x in ([dto['presenting_partner']] if dto['presenting_partner'] else [])+dto['official_partners']}:error('PUBLISH_INCOMPLETE','奖品提供方尚未公开或已停用')
+        elif z['provider_partner_id'] not in public_partner_ids:
+            error('PUBLISH_INCOMPLETE',f"奖品「{z['name']}」的提供方尚未公开或已停用，请恢复公开或改为本届实际提供方")
     if dto['champion']:
         for r in dto['placements']:
             if r['rank_from']<=3 and not any(a['placement_id']==r['id'] for a in dto['allocations']):error('PUBLISH_INCOMPLETE','前三名奖品尚未分配')
@@ -379,7 +402,9 @@ def edit_sponsor(key:str,payload:dict,db:Session=Depends(db_session)):
 
 @admin.get('/competitions/{key}/partners')
 def partners(key:str,db:Session=Depends(db_session)):
-    c=competition(db,key);return {'data':[entity_dto(x) for x in rows(db,CompetitionPartner,c.id)]}
+    c=competition(db,key)
+    return {'data':[{**entity_dto(x),'display_order':partner_order(x)}
+                    for x in sorted(rows(db,CompetitionPartner,c.id),key=lambda x:(partner_order(x),x.id))]}
 
 @admin.get('/competitions/{key}/prizes')
 def prizes(key:str,db:Session=Depends(db_session)):
@@ -389,9 +414,14 @@ def save_entity(db,c,p,payload,cls,obj=None):
     bump(db,p,payload.get('expected_version'));media_fields(payload)
     if cls==CompetitionPartner:
         if not db.get(Sponsor,payload['sponsor_id']):fail('NOT_FOUND','品牌不存在',404)
-        if payload.get('tier','official') not in ('presenting','official'):fail('TIER','无效合作级别',422)
+        tier=payload.get('tier',obj.tier if obj else 'official')
+        if tier not in ('presenting','official'):fail('TIER','无效合作级别',422)
+        order=payload.get('display_order',partner_order(obj) if obj else 0)
+        if order is None:order=0
+        if type(order) is not int:fail('DISPLAY_ORDER','展示顺序须为整数',422)
+        payload={**payload,'display_order':order}
         if obj is None:obj=cls(competition_id=c.id,sponsor_id=payload['sponsor_id'])
-        obj.tier=payload.get('tier','official');obj.published=payload.get('published',False);fields=PARTNER_FIELDS
+        obj.tier=tier;obj.published=payload.get('published',obj.published if obj.id else False);fields=PARTNER_FIELDS
     else:
         partner=same(db,CompetitionPartner,payload['provider_partner_id'],c.id)
         if payload.get('category') not in ('equipment','commemorative'):fail('CATEGORY','请选择奖品类别',422)

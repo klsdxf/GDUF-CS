@@ -17,6 +17,7 @@ export function render(d:ResultDTO,selected=0,options:ResultRenderOptions={visua
  const html=(s:string,v:string)=>{one(s).innerHTML=v}
  const title=d.display.edition_label||d.competition.name,c=d.champion,final=d.final_match,partner=d.presenting_partner
  const partners=resultPartners(d),partnerById=new Map(partners.map(item=>[item.id,item]))
+ const pendingSponsor='待赞助'
  text('.v5-season',title+(reference?' · 赛后示例':''))
  const lines=c.poster_title_lines.length?c.poster_title_lines:[c.english_name||c.name]
  if(!reference&&lines.length>1)one('.v4-type h3').setAttribute('data-poster-lines',String(lines.length))
@@ -44,22 +45,34 @@ export function render(d:ResultDTO,selected=0,options:ResultRenderOptions={visua
  html('.v4-runners',d.placements.filter(p=>p.rank_from===2||p.rank_from===3).map(p=>{const t=p.team,items=awards(d,p).filter(x=>x.z.category==='equipment');return `<article><span class="v4-big-place">${rank(p)}</span><div class="v4-runner-name"><small>${p.rank_from===2?'RUNNER-UP / 亚军':p.rank_to>3?'THIRD PLACE / 并列季军':'THIRD PLACE / 季军'}</small><h3>${e(t.name)}</h3><span>${e(t.english_name)}</span></div><div class="v4-runner-prize"><span>${e(items.map(x=>x.z.name).join(' / ')||'奖品待公布')}</span><small>${items.map(x=>`全队 ${x.a.quantity} ${e(x.z.unit)}`).join(' / ')}</small></div><span class="v4-runner-code" aria-hidden="true">${e(t.emblem_text)}</span></article>`}).join(''))
  html('.v4-road',`<div class="v4-road-title"><span>THE RUN</span><h3>冠军之路</h3></div>`+d.champion_path.map(m=>`<button data-match="${e(m.id)}"><small>${e(m.label)} / BO${m.best_of}</small><span>${e(teamName(d,m.a_team_id))} <b>${e(score(m))}</b> ${e(teamName(d,m.b_team_id))}</span><i>↗</i></button>`).join(''))
  text('#team-count',d.placements.length+(reference?' 支示例队伍':' 支队伍'))
- html('.results-table tbody',d.placements.map(p=>{const t=p.team,items=awards(d,p).sort((a,b)=>Number(a.z.category==='commemorative')-Number(b.z.category==='commemorative'));const reward=items.map(({z,a})=>z.category==='commemorative'&&items.length>1?'纪念徽章':`${e(z.name)} × ${a.quantity}`).join(' + ');const providerIds=new Set(items.map(({z})=>z.provider_partner_id));const providers=[...providerIds].map(id=>partnerById.get(id)).flatMap(s=>s?[s.english_name||s.name]:[]);return `<tr data-team="${e(t.name+t.english_name)}"><td>${rank(p)}</td><td><${reference?'span':'a'} ${reference?'':`href="/competitions/${e(d.competition.slug)}/teams/${e(t.team_id)}"`} class="table-identity"><span class="result-badge">${t.logo_url?`<img src="${e(t.logo_url)}" alt="" style="width:100%;height:100%;object-fit:contain">`:e(t.emblem_text)}</span><div><strong>${e(t.name)}</strong><small>${e(t.english_name)}</small></div></${reference?'span':'a'}></td><td>${reward||'奖品待公布'}</td><td>${providers.map(e).join(' / ')}</td></tr>`}).join(''))
+ html('.results-table tbody',d.placements.map(p=>{
+  const t=p.team,items=awards(d,p).sort((a,b)=>Number(a.z.category==='commemorative')-Number(b.z.category==='commemorative'))
+  const reward=items.map(({z,a})=>z.category==='commemorative'&&items.length>1?'纪念徽章':`${e(z.name)} × ${a.quantity}`).join(' + ')
+  const providerIds=new Set(items.map(({z})=>z.provider_partner_id))
+  const providers=[...providerIds].flatMap(id=>{
+   if(id===null)return [pendingSponsor]
+   const sponsor=partnerById.get(id)
+   return sponsor?[sponsor.english_name||sponsor.name]:[]
+  })
+  return `<tr data-team="${e(t.name+t.english_name)}"><td>${rank(p)}</td><td><${reference?'span':'a'} ${reference?'':`href="/competitions/${e(d.competition.slug)}/teams/${e(t.team_id)}"`} class="table-identity"><span class="result-badge">${t.logo_url?`<img src="${e(t.logo_url)}" alt="" style="width:100%;height:100%;object-fit:contain">`:e(t.emblem_text)}</span><div><strong>${e(t.name)}</strong><small>${e(t.english_name)}</small></div></${reference?'span':'a'}></td><td>${reward||'奖品待公布'}</td><td>${providers.map(e).join(' / ')}</td></tr>`
+ }).join(''))
  if(!reference){text('.v4-title>div>span',d.competition.season);text('.v4-title>p','赛事排名');text('.results-table caption','完整最终名次与奖励');html('.results-foot','<span>以正式发布版本为准</span><span>'+e(title)+'</span>');text('.v4-section-head>div>span','THE FINAL RANKINGS')}
  const podium=d.placements.filter(p=>p.rank_from<=3),p=podium[selected]||podium[0],items=awards(d,p).filter(x=>x.z.category==='equipment'),z=items[0]?.z,a=items[0]?.a
  const productProvider=reference?partner:partnerById.get(z?.provider_partner_id)
  const brand=productProvider?.english_name||productProvider?.name||''
- const brandFull=reference?[partner?.english_name,partner?.name].filter(Boolean).join(' / '):partnerName(productProvider)
+ const pending=z?.provider_partner_id===null
+ const brandFull=reference?[partner?.english_name,partner?.name].filter(Boolean).join(' / '):pending?pendingSponsor:partnerName(productProvider)
  const awardedPrizes=new Set(d.allocations.map(a=>a.prize_id))
  const equipmentProviders=new Set(d.prizes.filter(z=>z.category==='equipment'&&awardedPrizes.has(z.id)).map(z=>z.provider_partner_id))
- const awardBy=reference?[partner?.english_name,partner?.name].filter(Boolean).join(' ')+' · 虚构品牌':
-   partners.filter(s=>equipmentProviders.has(s.id)).map(partnerName).join('、')
+ const equipmentNames=partners.filter(s=>equipmentProviders.has(s.id)).map(partnerName)
+ if(equipmentProviders.has(null))equipmentNames.push(pendingSponsor)
+ const awardBy=reference?[partner?.english_name,partner?.name].filter(Boolean).join(' ')+' · 虚构品牌':equipmentNames.join('、')
  text('.v4-award-by',awardBy?'奖品支持 / '+awardBy:'')
  text('#product-model',z?.model_code||'—');text('#product-index',String(selected+1).padStart(2,'0')+' / '+String(podium.length).padStart(2,'0'))
  text('#product-title',z?.name||'该名次奖品待公布');text('#product-team',p.team.name)
  const label=p.rank_from===1?'冠军':p.rank_from===2?'亚军':'季军'
  text('#product-description',reference&&z?`${label}全队装备。每位队员 1 ${z.unit}，共 ${a.quantity} ${z.unit}。`:items.map(({z,a})=>`${z.name}：全队 ${a.quantity} ${z.unit}。${z.description||''}`).join(' '))
- text('.v4-product-brand',brandFull);text('.v4-product-art-note',brand?brand+' / EQUIPMENT SERIES':'')
+ text('.v4-product-brand',brandFull);text('.v4-product-art-note',pending?pendingSponsor:brand?brand+' / EQUIPMENT SERIES':'')
  const visual=one('#product-visual');visual.setAttribute('aria-label',(z?.name||'奖品待公布')+'示意插画')
  if(z?.image_url){visual.replaceWith(Object.assign(document.createElement('img'),{src:z.image_url,alt:z.name,id:'product-visual'}))}
  else one('#product-use').setAttribute('href',z?.builtin_illustration_key?'#'+z.builtin_illustration_key:'')

@@ -309,7 +309,7 @@ def validate(db,c,p):
         if a.get('distribution')=='per_recipient' and a['quantity']!=r.data.get('recipient_count',0)*(a.get('per_recipient_quantity') or 0):error('AWARD_QUANTITY','按人分配数量不一致')
         z=prizes_by_id.get(a['prize_id'])
         if not z:error('AWARD_QUANTITY','分配引用已停用奖品')
-        elif z['provider_partner_id'] not in public_partner_ids:
+        elif z['provider_partner_id'] is not None and z['provider_partner_id'] not in public_partner_ids:
             error('PUBLISH_INCOMPLETE',f"奖品「{z['name']}」的提供方尚未公开或已停用，请恢复公开或改为本届实际提供方")
     if dto['champion']:
         for r in dto['placements']:
@@ -423,10 +423,12 @@ def save_entity(db,c,p,payload,cls,obj=None):
         if obj is None:obj=cls(competition_id=c.id,sponsor_id=payload['sponsor_id'])
         obj.tier=tier;obj.published=payload.get('published',obj.published if obj.id else False);fields=PARTNER_FIELDS
     else:
-        partner=same(db,CompetitionPartner,payload['provider_partner_id'],c.id)
+        provider_id=payload.get('provider_partner_id',obj.provider_partner_id if obj else None)
+        if provider_id is not None:
+            same(db,CompetitionPartner,provider_id,c.id)
         if payload.get('category') not in ('equipment','commemorative'):fail('CATEGORY','请选择奖品类别',422)
-        if obj is None:obj=cls(competition_id=c.id,provider_partner_id=partner.id,name=payload['name'])
-        obj.provider_partner_id=partner.id;obj.name=payload['name'];obj.active=payload.get('active',True);fields=PRIZE_FIELDS
+        if obj is None:obj=cls(competition_id=c.id,provider_partner_id=provider_id,name=payload['name'])
+        obj.provider_partner_id=provider_id;obj.name=payload['name'];obj.active=payload.get('active',True);fields=PRIZE_FIELDS
     obj.data={k:payload[k] for k in fields if k in payload}
     if obj.id:obj.version+=1
     db.add(obj);db.flush();audit(db,'final_results.asset',obj.id,{'type':cls.__tablename__})

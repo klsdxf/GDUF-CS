@@ -245,7 +245,7 @@ class Prize(Base):
     __tablename__ = 'prizes'
     id: Mapped[str] = mapped_column(primary_key=True, default=uid)
     competition_id: Mapped[str] = mapped_column(ForeignKey('competitions.id'))
-    provider_partner_id: Mapped[str] = mapped_column(ForeignKey('competition_partners.id'))
+    provider_partner_id: Mapped[str | None] = mapped_column(ForeignKey('competition_partners.id'))
     name: Mapped[str]
     data: Mapped[dict] = mapped_column(JSON, default=dict)
     active: Mapped[bool] = mapped_column(default=True)

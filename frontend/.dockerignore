@@ -1,0 +1,10 @@
+.env
+.env.*
+node_modules/
+dist/
+test-results/
+diagnostic-results/
+visual-results/
+workflow-results/
+playwright-report/
+tests/

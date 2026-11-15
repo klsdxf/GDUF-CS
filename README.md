@@ -2,6 +2,8 @@
 
 广东金融学院学生社团 CS2 赛事展示与单管理员管理平台。Vue 3 + TypeScript + Element Plus / FastAPI + SQLAlchemy + Alembic / PostgreSQL / Nginx。开发依据见 [开发文档](开发文档/00_开发文档索引与决策记录.md)。
 
+当前线上环境、管理员交接、更新发布、证书续期和备份恢复见 [项目交接文档](项目交接文档.md)。正式入口为 <https://www.gdufcs.fun/>；实际服务器使用 Alibaba Cloud Linux 3，下文 Ubuntu 部署为通用方案。
+
 ## 本地运行
 
 Python 3.12、Node 22+。在仓库根目录执行：
@@ -60,7 +62,7 @@ server {
 
 ## 备份、恢复与升级
 
-每日 `bash scripts/backup.sh`，失败退出码接入实际监控；保留最近7份及关键节点备份，至少一份异地保存。包含数据库、图片和非秘密配置；实际 `.env` 密钥独立受控保存。恢复只向独立空库执行 `bash scripts/restore.sh backups/时间 EMPTY_DATABASE_ONLY`，对照计数与图片后再切换流量。脚本不会清空现有数据库。
+每日 `bash scripts/backup.sh`，失败退出码接入实际监控；保留最近7份及关键节点备份，至少一份异地保存。包含数据库、图片和非秘密配置；实际 `.env` 密钥独立受控保存。恢复时先在独立部署目录构建镜像，仅启动 `docker compose up -d db`（不要先执行迁移）；只向独立空库执行 `bash scripts/restore.sh backups/时间 EMPTY_DATABASE_ONLY`，对照计数与图片后再 `docker compose up -d` 并切换流量。脚本不会清空现有数据库。
 
 升级前备份，`docker compose build` 后让迁移单次运行成功，再更新 API 和静态前端。保留旧镜像；不兼容迁移不能只回滚镜像，需使用经验证的数据库恢复流程。
 

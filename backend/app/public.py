@@ -16,7 +16,8 @@ def public_c(db,key):
     return c
 
 def team_dto(db,t,version=None):
-    return {'id':t.id,'competition_id':t.competition_id,'code':t.code,'name':t.name,'description':t.description,'logo':t.logo,'members':[{'nickname':m.nickname,'role':m.role,'captain':m.captain} for m in db.scalars(select(Member).where(Member.registration_id==t.id,Member.version==(version or t.version)))]}
+    snapshot=db.get(RosterSnapshot,(t.id,version or t.version))
+    return {'id':t.id,'competition_id':t.competition_id,'code':t.code,'name':snapshot.name if snapshot else t.name,'description':snapshot.description if snapshot else t.description,'logo':snapshot.logo if snapshot else t.logo,'members':[{'nickname':m.nickname,'role':m.role,'captain':m.captain} for m in db.scalars(select(Member).where(Member.registration_id==t.id,Member.version==(version or t.version)))]}
 
 def match_dto(db,m):
     out={k:getattr(m,k) for k in ('id','competition_id','stage_id','code','round','group','bracket','source_a','source_b','best_of','scheduled_at','status','confirmed','version')}
@@ -81,7 +82,14 @@ def bracket(key:str,db:Session=Depends(db_session)):
     if not s or s.status!='published':fail('NOT_FOUND','阶段尚未公布',404)
     public_c(db,s.competition_id)
     ms=list(db.scalars(select(Match).where(Match.stage_id==key)))
-    return {'data':{'matches':[match_dto(db,m) for m in ms],'edges':[serialize(e) for e in db.scalars(select(Advancement).where(Advancement.source.in_([m.id for m in ms])))]}}
+    byes=[]
+    for m in ms:
+        if m.round>1 and not m.group:
+            for slot in ('a','b'):
+                team=getattr(m,slot);source=getattr(m,'source_'+slot)
+                if (team and not source) or source.startswith('group:'):
+                    byes.append({'name':db.get(Registration,team).name if team else None,'source':source})
+    return {'data':{'matches':[match_dto(db,m) for m in ms],'edges':[serialize(e) for e in db.scalars(select(Advancement).where(Advancement.source.in_([m.id for m in ms])))],'bye_sources':byes}}
 
 @router.get('/competitions/{key}/announcements')
 def announcements(key:str,db:Session=Depends(db_session)):

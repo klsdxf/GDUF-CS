@@ -75,6 +75,14 @@ class Member(Base):
     captain: Mapped[bool]
     __table_args__ = (UniqueConstraint('registration_id', 'version', 'steam_id'),)
 
+class RosterSnapshot(Base):
+    __tablename__ = 'roster_snapshots'
+    registration_id: Mapped[str] = mapped_column(ForeignKey('registrations.id'), primary_key=True)
+    version: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str]
+    description: Mapped[str]
+    logo: Mapped[str]
+
 class Claim(Base):
     __tablename__ = 'active_member_claims'
     competition_id: Mapped[str] = mapped_column(ForeignKey('competitions.id'), primary_key=True)

@@ -1,0 +1,14 @@
+{
+  "environment": "local acceptance dataset; SQLite unless DATABASE_URL configured",
+  "duration_seconds": 601.46,
+  "users": 100,
+  "think_time_seconds": 1,
+  "samples": 36007,
+  "status_counts": {
+    "200": 36007
+  },
+  "errors": 0,
+  "p95_ms": 1005.64,
+  "max_ms": 3129.61,
+  "passed": true
+}

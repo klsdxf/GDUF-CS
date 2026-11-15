@@ -1,0 +1,93 @@
+name: Verify platform
+on: [push, pull_request]
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: {POSTGRES_PASSWORD: test-only, POSTGRES_DB: gduf_test}
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install -r backend/requirements.lock
+      - run: cd backend && alembic upgrade head && pytest -q
+        env:
+          DATABASE_URL: postgresql+psycopg://postgres:test-only@localhost/gduf_test
+          TEST_DATABASE_URL: postgresql+psycopg://postgres:test-only@localhost/gduf_test
+      - name: Verify PostgreSQL backup and restore into empty database
+        run: |
+          docker exec ${{ job.services.postgres.id }} pg_dump -U postgres -d gduf_test -Fc > /tmp/gduf.dump
+          docker exec ${{ job.services.postgres.id }} createdb -U postgres gduf_restore
+          docker exec -i ${{ job.services.postgres.id }} pg_restore -U postgres -d gduf_restore --exit-on-error < /tmp/gduf.dump
+          cd backend && python -m app.verify_restore
+        env:
+          DATABASE_URL: postgresql+psycopg://postgres:test-only@localhost/gduf_restore
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22', cache: npm, cache-dependency-path: frontend/package-lock.json}
+      - run: cd frontend && npm ci && npm run build && npm audit --audit-level=moderate
+  deployment:
+    runs-on: ubuntu-latest
+    env:
+      DB_PASSWORD: ci-only-safe-password
+      PUBLIC_ORIGIN: https://ci.invalid
+      COMPOSE_PROJECT_NAME: gduf_ci_source
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and start complete deployment
+        run: docker compose up -d --build --wait
+      - name: Verify same-domain API SPA routing and private endpoints
+        run: |
+          curl --fail http://127.0.0.1:8080/api/v1/health
+          curl --fail http://127.0.0.1:8080/competitions/history/schedule | grep 'id="app"'
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/api/v1/admin/competitions)" = 401
+      - name: Back up database and image volume
+        run: |
+          docker compose exec -T api python -c "from PIL import Image; Image.new('RGB',(16,16),'red').save('/app/storage/media/acceptance.webp','WEBP')"
+          bash scripts/backup.sh backups/ci
+          docker compose exec -T api sha256sum /app/storage/media/acceptance.webp | cut -d' ' -f1 > /tmp/source-image.sha
+      - name: Verify IP certificate bootstrap configuration
+        run: |
+          bash -n scripts/ip-https.sh
+          PUBLIC_ORIGIN=https://203.0.113.10 bash scripts/ip-https.sh prepare 203.0.113.10
+          test "$(curl --fail http://127.0.0.1/.well-known/acme-challenge/gduf-check)" = gduf-acme-ready
+      - name: Verify IP HTTPS using an isolated test certificate
+        run: |
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=203.0.113.10 -addext subjectAltName=IP:203.0.113.10 -keyout /tmp/ip-test.key -out /tmp/ip-test.crt
+          docker run --rm -i -v gduf_ci_source_ip_certificates:/certs nginx:1.27-alpine sh -c 'mkdir -p /certs/live/gduf-ip; cat > /certs/live/gduf-ip/fullchain.pem' < /tmp/ip-test.crt
+          docker run --rm -i -v gduf_ci_source_ip_certificates:/certs nginx:1.27-alpine sh -c 'cat > /certs/live/gduf-ip/privkey.pem' < /tmp/ip-test.key
+          PUBLIC_ORIGIN=https://203.0.113.10 bash scripts/ip-https.sh enable 203.0.113.10
+          curl --fail --retry 5 --retry-connrefused --noproxy '*' --cacert /tmp/ip-test.crt --connect-to 203.0.113.10:443:127.0.0.1:443 https://203.0.113.10/api/v1/health
+      - name: Restore backup to separate empty deployment
+        env:
+          COMPOSE_PROJECT_NAME: gduf_ci_restore
+        run: |
+          docker compose up -d db --wait
+          bash scripts/restore.sh backups/ci EMPTY_DATABASE_ONLY
+          docker compose run --rm -T --no-deps api sha256sum /app/storage/media/acceptance.webp | cut -d' ' -f1 > /tmp/restored-image.sha
+          diff /tmp/source-image.sha /tmp/restored-image.sha
+      - name: Verify domain HTTPS and backend origin switch
+        run: |
+          bash -n scripts/domain-https.sh
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=www.example.test -addext subjectAltName=DNS:www.example.test -keyout /tmp/domain-test.key -out /tmp/domain-test.crt
+          docker run --rm -i -v gduf_ci_source_ip_certificates:/certs nginx:1.27-alpine sh -c 'mkdir -p /certs/live/gduf-domain; cat > /certs/live/gduf-domain/fullchain.pem' < /tmp/domain-test.crt
+          docker run --rm -i -v gduf_ci_source_ip_certificates:/certs nginx:1.27-alpine sh -c 'cat > /certs/live/gduf-domain/privkey.pem' < /tmp/domain-test.key
+          printf 'PUBLIC_ORIGIN=https://ci.invalid\n' > .env
+          CURL_CA_BUNDLE=/tmp/domain-test.crt bash scripts/domain-https.sh enable www.example.test
+          curl --fail --retry 5 --retry-connrefused --noproxy '*' --cacert /tmp/domain-test.crt --connect-to www.example.test:443:127.0.0.1:443 https://www.example.test/api/v1/health
+          docker compose exec -T api python -c "import os; assert os.environ['PUBLIC_ORIGIN'] == 'https://www.example.test'"
+      - name: Deployment logs
+        if: failure()
+        run: docker compose logs --tail=100
+      - name: Stop isolated CI deployments
+        if: always()
+        run: |
+          docker compose -f compose.yaml -f deploy/compose.ip.yaml down
+          COMPOSE_PROJECT_NAME=gduf_ci_restore docker compose down

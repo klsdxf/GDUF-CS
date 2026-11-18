@@ -26,7 +26,9 @@ services:
       db: {condition: service_healthy}
   api:
     build: ./backend
-    environment: *api_env
+    environment:
+      <<: *api_env
+      LOGIN_TRUSTED_PROXIES: ${LOGIN_TRUSTED_PROXIES:-web,edge}
     volumes: [media:/app/storage/media]
     depends_on:
       migrate: {condition: service_completed_successfully}

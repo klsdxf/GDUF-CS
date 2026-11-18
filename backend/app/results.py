@@ -74,7 +74,14 @@ def save_result(key:str,payload:dict,db:Session=Depends(db_session)):
 @router.post('/matches/{key}/result/confirm')
 def confirm(key:str,payload:dict,db:Session=Depends(db_session)):
     m,c=match_locked(db,key)
-    if m.confirmed and payload.get('expected_version')==m.version-1:return {'data':serialize(m)}
+    if m.confirmed:
+        if payload.get('expected_version') == m.version - 1:
+            last_confirm = db.scalar(select(Audit.payload).where(
+                Audit.entity_id == key, Audit.action == 'result.confirm'
+            ).order_by(Audit.created_at.desc()).limit(1))
+            if last_confirm and last_confirm.get('version') == m.version:
+                return {'data': serialize(m)}
+        fail('CONFIRMED','已确认比赛请通过修正流程操作',409)
     if payload.get('expected_version')!=m.version:fail('VERSION','成绩已变化，请刷新',409)
     if not m.published or m.status=='cancelled':fail('MATCH','未发布或取消的比赛不能确认')
     r=calculate(m,m.draft_result,c)
@@ -108,6 +115,7 @@ def revise(key:str,payload:dict,db:Session=Depends(db_session)):
         if m.group:
             for slot in ('a','b'):
                 if getattr(target,'source_'+slot).startswith('group:'):setattr(target,slot,None)
+        target.rosters={team:version for team,version in target.rosters.items() if team in (target.a,target.b)}
         target.result={};target.draft_result={};target.winner=None;target.confirmed=False;target.version+=1
         if target.bracket=='reset':target.status='unscheduled'
     m.result=result;m.winner=result['winner'];m.version+=1
@@ -175,12 +183,20 @@ def qualify(key:str,db:Session=Depends(db_session)):
     if not group_matches or any(not m.confirmed for m in group_matches):fail('INCOMPLETE','小组赛尚未全部确认')
     ranks=standings(db,s)
     if any(r['unresolved'] for r in ranks):fail('UNRESOLVED','排名有歧义，请先有理由裁定',409)
+    qualified={(row['group'],str(row['rank'])):row['team_id'] for row in ranks}
     for m in db.scalars(select(Match).where(Match.stage_id==key,Match.bracket=='playoff')):
         if m.confirmed or m.status=='ongoing':fail('LOCKED','淘汰赛已开始',409)
+        slots={'a':m.a,'b':m.b}
         for slot in ('a','b'):
             source=getattr(m,'source_'+slot)
             if source.startswith('group:'):
-                _,g,rank=source.split(':');row=next(r for r in ranks if r['group']==g and r['rank']==int(rank))
-                setattr(m,slot,row['team_id'])
+                team=qualified.get(tuple(source.split(':')[1:]))
+                if team is None:
+                    fail('QUALIFIERS','小组排名无法填满已配置的晋级位',409)
+                slots[slot]=team
+        versions={t:m.rosters[t] if t in m.rosters else db.get(Registration,t).version
+                  for t in slots.values() if t}
+        m.a,m.b=slots['a'],slots['b']
+        m.rosters=versions
     audit(db,'qualification.confirm',key,{})
     return {'data':True}

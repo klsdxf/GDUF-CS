@@ -52,7 +52,11 @@ def generate_graph(entries,kind,config):
             fail('GROUPS','分组数、晋级数不适用于当前参赛数量')
         groups=[entries[i::count] for i in range(count)]
         manual=config.get('manual_groups')
-        if manual:
+        if manual is not None:
+            if (not isinstance(manual,list) or len(manual)!=count
+                or any(not isinstance(g,list) or len(g)<max(2,qualify)
+                       or any(not isinstance(t,str) for t in g) for g in manual)):
+                fail('GROUPS','手动分组须符合组数，每组至少两队且能填满晋级位')
             if sorted(x for g in manual for x in g)!=sorted(entries): fail('GROUPS','手动分组须包含全部队伍且不得重复')
             groups=manual;count=len(groups)
         for idx,group in enumerate(groups):
@@ -166,6 +170,9 @@ def publish(key:str,db:Session=Depends(db_session)):
     c=competition(db,s.competition_id,True)
     if s.status not in ('preview','published'):fail('SCHEDULE','请先生成草稿')
     if not c.published:fail('PUBLISH','请先发布赛事')
+    if s.status=='published':return {'data':serialize(s)}
+    if s.type=='group_single' and 'manual_groups' in s.config:
+        generate_graph(list(s.entries),s.type,s.config)
     for m in db.scalars(select(Match).where(Match.stage_id==key)):
         m.published=True
         if m.a and m.b:

@@ -4,12 +4,12 @@ import re
 import zipfile
 from datetime import datetime, timedelta, timezone
 from openpyxl import Workbook, load_workbook
-from fastapi import APIRouter, Depends, UploadFile, File, Form
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select, delete
 from sqlalchemy.orm import Session
 from .db import *
-from .security import authenticated, fail
+from .security import authenticated, authorized_form, upload_schema, fail
 from .schemas import CompetitionCreate, CompetitionPresentation
 
 router = APIRouter(prefix='/api/v1/admin', dependencies=[Depends(authenticated)])
@@ -250,8 +250,10 @@ def parse_excel(raw):
     if not teams: errors.append({'code':'EMPTY','message':'没有队伍数据'})
     return list(teams.values()),errors
 
-@router.post('/competitions/{key}/imports/preview')
-async def preview_import(key: str, file: UploadFile=File(...), mode: str=Form('create'), db: Session=Depends(db_session)):
+@router.post('/competitions/{key}/imports/preview',openapi_extra=upload_schema(with_mode=True))
+async def preview_import(key: str, form=Depends(authorized_form), db: Session=Depends(db_session)):
+    file=form['file']
+    mode=form.get('mode','create')
     c=competition(db,key,True)
     if mode not in ('create','update'): fail('MODE','请选择新增或更新')
     if not file.filename.lower().endswith('.xlsx'): fail('FILE','仅支持 .xlsx')

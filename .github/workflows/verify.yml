@@ -32,7 +32,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: {node-version: '22', cache: npm, cache-dependency-path: frontend/package-lock.json}
-      - run: cd frontend && npm ci && npm run build && npm audit --audit-level=moderate
+      - run: cd frontend && npm ci && npm run build
+      - name: Audit production and patched build dependencies
+        working-directory: frontend
+        run: |
+          npm audit --omit=dev --audit-level=moderate
+          node scripts/guard-picomatch.mjs --check
+          npm audit --json > "$RUNNER_TEMP/frontend-audit.json" || test "$?" -eq 1
+          node scripts/check-build-audit.mjs "$RUNNER_TEMP/frontend-audit.json"
       - run: cd frontend && VITE_PUBLIC_DATA_MODE=demo npm run build
   frontend-e2e:
     runs-on: windows-latest

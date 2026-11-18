@@ -153,7 +153,7 @@ def save_draft(key:str,payload:ResultDraftWrite,db:Session=Depends(db_session)):
         fail('LOCKED','已有名次、对局或公开版本时不能直接切换排名类型',409)
     p.result_kind=kind
     allowed=('final_stage_id','final_match_id','third_place_match_id','ranking_method','rules_version','display_meta','seal_mode')
-    p.config={k:v for k,v in payload.items() if k in allowed}
+    p.config={**p.config, **{k:v for k,v in payload.items() if k in allowed}}
     for field,cls in [('final_stage_id',Stage),('final_match_id',Match),('third_place_match_id',Match)]:
         if p.config.get(field):same(db,cls,p.config[field],c.id)
     audit(db,'final_results.draft',p.id,p.config)

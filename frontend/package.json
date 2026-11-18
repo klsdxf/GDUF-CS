@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "postinstall": "node scripts/guard-picomatch.mjs",
     "dev": "vite --host 0.0.0.0",
     "build": "npm run lint:css && vue-tsc --noEmit && vite build && node scripts/build-routing.mjs",
     "preview": "vite preview --host 0.0.0.0",

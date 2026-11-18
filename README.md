@@ -75,12 +75,15 @@ server {
   location / {
     proxy_pass http://127.0.0.1:8080;
     proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $remote_addr;
     proxy_set_header X-Forwarded-Proto https;
   }
 }
 ```
 
 ## 备份、恢复与升级
+
+使用上面的宿主机反代时，将 `LOGIN_TRUSTED_PROXIES` 设置为 `web,<宿主机反代在 web 容器看到的来源 IP>` 后重建 API 容器。仓库自带的域名及 IP HTTPS 部署默认信任 Compose 的 web、edge 两个服务。入口覆盖访客转发头，中间代理追加连接地址，应用从右向左取首个非受信来源用于登录限流。
 
 每日 `bash scripts/backup.sh`，失败退出码接入实际监控；保留最近7份及关键节点备份，至少一份异地保存。包含数据库、图片和非秘密配置；实际 `.env` 密钥独立受控保存。恢复时先在独立部署目录构建镜像，仅启动 `docker compose up -d db`（不要先执行迁移）；只向独立空库执行 `bash scripts/restore.sh backups/时间 EMPTY_DATABASE_ONLY`，对照计数与图片后再 `docker compose up -d` 并切换流量。脚本不会清空现有数据库。
 

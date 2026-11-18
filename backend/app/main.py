@@ -2,6 +2,10 @@ import os
 import secrets
 import asyncio
 import time
+import socket
+from collections import OrderedDict
+from ipaddress import ip_address
+from threading import Lock
 from datetime import timedelta
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
@@ -42,7 +46,49 @@ async def read_cache(request, call_next):
         public_cache.clear()
     return response
 ph = PasswordHasher()
-login_attempts = {}
+login_attempts = OrderedDict()
+login_lock = Lock()
+
+
+def login_source(request):
+    peer = request.client.host
+    forwarded = request.headers.get('x-forwarded-for')
+    if not forwarded:
+        return peer
+    trusted = set()
+    for entry in os.getenv('LOGIN_TRUSTED_PROXIES', '').split(','):
+        entry = entry.strip()
+        if not entry:
+            continue
+        try:
+            trusted.add(str(ip_address(entry)))
+        except ValueError:
+            try:
+                trusted.update(row[4][0] for row in socket.getaddrinfo(entry, None))
+            except socket.gaierror:
+                continue
+    for hop in reversed(forwarded.split(',')):
+        if peer not in trusted:
+            break
+        try:
+            peer = str(ip_address(hop.strip()))
+        except ValueError:
+            break
+    return peer
+
+
+def reserve_login(ip):
+    with login_lock:
+        stamp = time.monotonic()
+        cutoff = stamp - 300
+        while login_attempts and next(iter(login_attempts.values()))[-1] <= cutoff:
+            login_attempts.popitem(last=False)
+        attempts = [t for t in login_attempts.get(ip, []) if t > cutoff]
+        if len(attempts) >= 10:
+            fail('RATE_LIMIT', '登录过于频繁，五分钟后重试', 429)
+        login_attempts[ip] = [*attempts, stamp]
+        login_attempts.move_to_end(ip)
+        return stamp
 
 @app.exception_handler(HTTPException)
 async def http_error(request, exc):
@@ -75,12 +121,8 @@ def login(payload: Login, request: Request, response: Response, db: Session = De
     payload=payload.model_dump()
     if request.headers.get('origin') != os.getenv('PUBLIC_ORIGIN', 'http://localhost:5173'):
         fail('ORIGIN', '请求来源不符', 403)
-    ip = request.client.host
-    attempts = [t for t in login_attempts.get(ip, []) if t > now().timestamp() - 300]
-    if len(attempts) >= 10:
-        fail('RATE_LIMIT', '登录过于频繁，五分钟后重试', 429)
-    attempts.append(now().timestamp())
-    login_attempts[ip] = attempts
+    ip = login_source(request)
+    attempt = reserve_login(ip)
     admin = db.get(Admin, 1)
     valid = False
     if admin and payload.get('username') == admin.username:
@@ -90,6 +132,12 @@ def login(payload: Login, request: Request, response: Response, db: Session = De
             pass
     if not valid:
         fail('INVALID_LOGIN', '账号或密码错误', 401)
+    with login_lock:
+        attempts = login_attempts.get(ip, [])
+        if attempt in attempts:
+            attempts.remove(attempt)
+            if not attempts:
+                del login_attempts[ip]
     token, csrf = secrets.token_urlsafe(48), secrets.token_urlsafe(32)
     db.add(AdminSession(token_hash=digest(token), csrf=csrf, expires_at=now() + timedelta(hours=12)))
     response.set_cookie('session', token, httponly=True, secure=os.getenv('ENV') == 'production', samesite='strict', max_age=43200)

@@ -1,6 +1,7 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY package*.json ./
+COPY scripts/guard-picomatch.mjs ./scripts/
 RUN npm ci
 COPY . .
 ARG VITE_PUBLIC_DATA_MODE=api

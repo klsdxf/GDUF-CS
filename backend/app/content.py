@@ -4,12 +4,12 @@ from pathlib import Path
 from urllib.parse import urlparse
 from datetime import datetime, timezone
 from PIL import Image, UnidentifiedImageError
-from fastapi import APIRouter, Depends, UploadFile, File
+from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from .db import *
 from .roster import competition, serialize, audit
-from .security import authenticated, fail
+from .security import authenticated, authorized_form, upload_schema, fail
 
 router=APIRouter(prefix='/api/v1/admin',dependencies=[Depends(authenticated)])
 
@@ -64,12 +64,15 @@ def live_save(db,l,payload):
             parsed=urlparse(value)
             if parsed.scheme!='https' or not (parsed.hostname=='bilibili.com' or (parsed.hostname or '').endswith('.bilibili.com')):fail('URL','请填写 HTTPS B站链接')
         setattr(l,k,value)
-    if payload.get('status','offline') not in ('offline','live','replay'):fail('STATUS','无效直播状态')
-    l.status=payload.get('status','offline')
+    status=payload.get('status',l.status or 'offline')
+    if status not in ('offline','live','replay'):fail('STATUS','无效直播状态')
+    l.status=status
     if payload.get('match_id'):
         m=db.get(Match,payload['match_id'])
         if not m or m.competition_id!=l.competition_id:fail('MATCH','比赛不属于当前赛事')
         l.match_id=m.id
+    elif 'match_id' in payload:
+        l.match_id=None
     db.add(l);db.flush();audit(db,'live.save',l.id,{})
     return {'data':serialize(l)}
 
@@ -84,8 +87,9 @@ def edit_live(key:str,payload:dict,db:Session=Depends(db_session)):
     if not l:fail('NOT_FOUND','直播不存在',404)
     return live_save(db,l,payload)
 
-@router.post('/assets')
-async def asset(file:UploadFile=File(...),db:Session=Depends(db_session)):
+@router.post('/assets',openapi_extra=upload_schema())
+async def asset(form=Depends(authorized_form),db:Session=Depends(db_session)):
+    file=form['file']
     raw=await file.read(2*1024*1024+1)
     if len(raw)>2*1024*1024:fail('FILE_SIZE','图片上限2MiB',413)
     try:

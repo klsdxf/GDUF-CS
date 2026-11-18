@@ -15,7 +15,7 @@ from fastapi.exceptions import RequestValidationError
 from sqlalchemy import select, delete, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from .db import Admin, AdminSession, db_session, now
+from .db import Admin, AdminSession, db_transaction, now
 from .security import authenticated, digest, fail
 from .schemas import Login, PasswordChange
 
@@ -112,12 +112,12 @@ async def private_headers(request, call_next):
     return response
 
 @app.get('/api/v1/health')
-def health(db: Session = Depends(db_session)):
+def health(db: Session = db_transaction):
     db.execute(text('SELECT 1'))
     return {'data': {'status': 'ok'}}
 
 @app.post('/api/v1/admin/auth/login')
-def login(payload: Login, request: Request, response: Response, db: Session = Depends(db_session)):
+def login(payload: Login, request: Request, response: Response, db: Session = db_transaction):
     payload=payload.model_dump()
     if request.headers.get('origin') != os.getenv('PUBLIC_ORIGIN', 'http://localhost:5173'):
         fail('ORIGIN', '请求来源不符', 403)
@@ -144,11 +144,11 @@ def login(payload: Login, request: Request, response: Response, db: Session = De
     return {'data': {'username': admin.username, 'csrf': csrf}}
 
 @app.get('/api/v1/admin/auth/me')
-def me(session=Depends(authenticated), db: Session = Depends(db_session)):
+def me(session=Depends(authenticated), db: Session = db_transaction):
     return {'data': {'username': db.get(Admin, 1).username, 'csrf': session.csrf}}
 
 @app.post('/api/v1/admin/auth/logout')
-def logout(response: Response, session=Depends(authenticated), db: Session = Depends(db_session)):
+def logout(response: Response, session=Depends(authenticated), db: Session = db_transaction):
     db.delete(session)
     response.delete_cookie('session')
     return {'data': True}
@@ -164,7 +164,7 @@ media.mkdir(parents=True, exist_ok=True)
 app.mount('/media', StaticFiles(directory=str(media)), name='media')
 
 @app.put('/api/v1/admin/auth/password')
-def password(payload: PasswordChange, session=Depends(authenticated), db: Session = Depends(db_session)):
+def password(payload: PasswordChange, session=Depends(authenticated), db: Session = db_transaction):
     payload=payload.model_dump()
     admin = db.get(Admin, 1)
     try:

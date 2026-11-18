@@ -14,18 +14,18 @@ from .security import authenticated, authorized_form, upload_schema, fail
 router=APIRouter(prefix='/api/v1/admin',dependencies=[Depends(authenticated)])
 
 @router.get('/audit-logs')
-def logs(action:str='',entity_id:str='',db:Session=Depends(db_session)):
+def logs(action:str='',entity_id:str='',db:Session=db_transaction):
     q=select(Audit)
     if action:q=q.where(Audit.action.contains(action))
     if entity_id:q=q.where(Audit.entity_id==entity_id)
     return {'data':[serialize(x) for x in db.scalars(q.order_by(Audit.created_at.desc()).limit(500))]}
 
 @router.get('/dashboard')
-def dashboard(db:Session=Depends(db_session)):
+def dashboard(db:Session=db_transaction):
     return {'data':{'competitions':len(list(db.scalars(select(Competition.id)))),'teams':len(list(db.scalars(select(Registration.id).where(Registration.active==True)))),'matches':len(list(db.scalars(select(Match.id))))}}
 
 @router.get('/competitions/{key}/announcements')
-def list_announcements(key:str,db:Session=Depends(db_session)):
+def list_announcements(key:str,db:Session=db_transaction):
     c=competition(db,key)
     return {'data':[serialize(x) for x in db.scalars(select(Announcement).where(Announcement.competition_id==c.id))]}
 
@@ -42,18 +42,18 @@ def announcement_save(db,a,payload):
     return {'data':serialize(a)}
 
 @router.post('/announcements')
-def create_announcement(payload:dict,db:Session=Depends(db_session)):
+def create_announcement(payload:dict,db:Session=db_transaction):
     c=competition(db,payload['competition_id'])
     return announcement_save(db,Announcement(competition_id=c.id,title='',body=''),payload)
 
 @router.patch('/announcements/{key}')
-def edit_announcement(key:str,payload:dict,db:Session=Depends(db_session)):
+def edit_announcement(key:str,payload:dict,db:Session=db_transaction):
     a=db.get(Announcement,key)
     if not a:fail('NOT_FOUND','公告不存在',404)
     return announcement_save(db,a,payload)
 
 @router.get('/competitions/{key}/live')
-def live_list(key:str,db:Session=Depends(db_session)):
+def live_list(key:str,db:Session=db_transaction):
     c=competition(db,key)
     return {'data':[serialize(x) for x in db.scalars(select(LiveStream).where(LiveStream.competition_id==c.id))]}
 
@@ -77,18 +77,18 @@ def live_save(db,l,payload):
     return {'data':serialize(l)}
 
 @router.post('/live-streams')
-def create_live(payload:dict,db:Session=Depends(db_session)):
+def create_live(payload:dict,db:Session=db_transaction):
     c=competition(db,payload['competition_id'])
     return live_save(db,LiveStream(competition_id=c.id,room_url='',replay_url=''),payload)
 
 @router.patch('/live-streams/{key}')
-def edit_live(key:str,payload:dict,db:Session=Depends(db_session)):
+def edit_live(key:str,payload:dict,db:Session=db_transaction):
     l=db.get(LiveStream,key)
     if not l:fail('NOT_FOUND','直播不存在',404)
     return live_save(db,l,payload)
 
 @router.post('/assets',openapi_extra=upload_schema())
-async def asset(form=Depends(authorized_form),db:Session=Depends(db_session)):
+async def asset(form=Depends(authorized_form, scope='function'),db:Session=db_transaction):
     file=form['file']
     raw=await file.read(2*1024*1024+1)
     if len(raw)>2*1024*1024:fail('FILE_SIZE','图片上限2MiB',413)

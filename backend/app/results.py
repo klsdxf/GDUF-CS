@@ -62,7 +62,7 @@ def match_locked(db,key):
     return m,c
 
 @router.put('/matches/{key}/result')
-def save_result(key:str,payload:dict,db:Session=Depends(db_session)):
+def save_result(key:str,payload:dict,db:Session=db_transaction):
     m,c=match_locked(db,key)
     if m.status=='cancelled':fail('CANCELLED','已取消比赛不能录分')
     if m.confirmed:fail('CONFIRMED','已确认比赛请通过修正流程操作',409)
@@ -72,7 +72,7 @@ def save_result(key:str,payload:dict,db:Session=Depends(db_session)):
     return {'data':serialize(m)}
 
 @router.post('/matches/{key}/result/confirm')
-def confirm(key:str,payload:dict,db:Session=Depends(db_session)):
+def confirm(key:str,payload:dict,db:Session=db_transaction):
     m,c=match_locked(db,key)
     if m.confirmed:
         if payload.get('expected_version') == m.version - 1:
@@ -92,13 +92,13 @@ def confirm(key:str,payload:dict,db:Session=Depends(db_session)):
     return {'data':serialize(m)}
 
 @router.post('/matches/{key}/result/revise-preview')
-def revise_preview(key:str,payload:dict,db:Session=Depends(db_session)):
+def revise_preview(key:str,payload:dict,db:Session=db_transaction):
     m,c=match_locked(db,key)
     affected=downstream(db,m)
     return {'data':{'result':calculate(m,payload,c),'affected':[serialize(x) for x in affected],'blocking':[x.id for x in affected if x.confirmed or x.status=='ongoing'],'affected_releases':[r.id for r in db.scalars(select(ResultRelease).where(ResultRelease.competition_id==c.id,ResultRelease.status=='published'))]}}
 
 @router.post('/matches/{key}/result/revise')
-def revise(key:str,payload:dict,db:Session=Depends(db_session)):
+def revise(key:str,payload:dict,db:Session=db_transaction):
     m,c=match_locked(db,key)
     if not m.confirmed or payload.get('expected_version')!=m.version:fail('VERSION','比赛未确认或版本不符',409)
     if not payload.get('reason'):fail('REASON','修正必须填写原因')
@@ -159,7 +159,7 @@ def standings(db,stage,group=None):
     return output
 
 @router.put('/stages/{key}/ranking-resolution')
-def resolve_ranking(key:str,payload:dict,db:Session=Depends(db_session)):
+def resolve_ranking(key:str,payload:dict,db:Session=db_transaction):
     s=db.get(Stage,key)
     if not s:fail('NOT_FOUND','阶段不存在',404)
     competition(db,s.competition_id,True)
@@ -175,7 +175,7 @@ def resolve_ranking(key:str,payload:dict,db:Session=Depends(db_session)):
     return {'data':standings(db,s)}
 
 @router.post('/stages/{key}/qualifications/confirm')
-def qualify(key:str,db:Session=Depends(db_session)):
+def qualify(key:str,db:Session=db_transaction):
     s=db.get(Stage,key)
     if not s:fail('NOT_FOUND','阶段不存在',404)
     competition(db,s.competition_id,True)

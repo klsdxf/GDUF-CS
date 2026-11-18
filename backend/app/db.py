@@ -1,6 +1,7 @@
 import os
 from datetime import datetime, timezone
 from uuid import uuid4
+from fastapi import Depends
 from sqlalchemy import create_engine, event, String, DateTime, JSON, ForeignKey, UniqueConstraint, CheckConstraint, ForeignKeyConstraint, Index
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
@@ -187,6 +188,11 @@ class Audit(Base):
 def db_session():
     with Session.begin() as session:
         yield session
+
+
+# Commit before sending the response so immediately following requests can see
+# the changes and commit failures still reach the API error handlers.
+db_transaction = Depends(db_session, scope='function')
 
 
 class ResultPage(Base):

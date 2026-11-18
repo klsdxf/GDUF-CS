@@ -1,15 +1,15 @@
 """Uncached, read-only HTML existence checks for the web auth_request subrequest."""
 import re
 from urllib.parse import urlsplit, unquote
-from fastapi import APIRouter, Depends, Header, HTTPException, Response
+from fastapi import APIRouter, Header, HTTPException, Response
 from sqlalchemy.orm import Session
-from .db import db_session
+from .db import db_transaction
 from . import public
 
 router = APIRouter()
 
 @router.get('/internal/page-check', include_in_schema=False)
-def page_check(x_original_uri: str = Header(default=''), db: Session = Depends(db_session)):
+def page_check(x_original_uri: str = Header(default=''), db: Session = db_transaction):
     path = unquote(urlsplit(x_original_uri).path)
     if '%' in path or '//' in path or any(p in ('.', '..') for p in path.split('/')):
         return Response(status_code=403)

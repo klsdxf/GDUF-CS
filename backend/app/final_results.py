@@ -138,12 +138,12 @@ def final_match(db,c,p):
     return s,final,ms
 
 @admin.get('/competitions/{key}/final-results/draft')
-def get_draft(key:str,db:Session=Depends(db_session)):
+def get_draft(key:str,db:Session=db_transaction):
     c,p=page(db,key)
     return {'data':{**serialize(p),'placements':[{**serialize(r),**r.data} for r in placements(db,p)],'path':[serialize(x) for x in db.scalars(select(ResultPathMatch).where(ResultPathMatch.result_page_id==p.id))]}}
 
 @admin.put('/competitions/{key}/final-results/draft')
-def save_draft(key:str,payload:ResultDraftWrite,db:Session=Depends(db_session)):
+def save_draft(key:str,payload:ResultDraftWrite,db:Session=db_transaction):
     payload=payload.model_dump(exclude_unset=True)
     c,p=page(db,key,True)
     bump(db,p,payload.get('expected_version'))
@@ -181,7 +181,7 @@ def replace_placements(db,c,p,items,calculated=False):
     db.flush()
 
 @admin.post('/competitions/{key}/final-results/calculate')
-def calculate_rankings(key:str,payload:dict,db:Session=Depends(db_session)):
+def calculate_rankings(key:str,payload:dict,db:Session=db_transaction):
     c,p=page(db,key);bump(db,p,payload.get('expected_version'))
     if p.result_kind=='test':
         replace_placements(db,c,p,test_rankings.ranking_items(db,c,p),calculated=True)
@@ -226,14 +226,14 @@ def calculate_rankings(key:str,payload:dict,db:Session=Depends(db_session)):
     return get_draft(key,db)
 
 @admin.put('/competitions/{key}/final-results/placements')
-def save_placements(key:str,payload:ResultPlacementsWrite,db:Session=Depends(db_session)):
+def save_placements(key:str,payload:ResultPlacementsWrite,db:Session=db_transaction):
     payload=payload.model_dump(exclude_unset=True)
     c,p=page(db,key);bump(db,p,payload.get('expected_version'));replace_placements(db,c,p,payload['items'])
     audit(db,'final_results.placements',p.id,{'count':len(payload['items'])})
     return get_draft(key,db)
 
 @admin.put('/competitions/{key}/final-results/path')
-def save_path(key:str,payload:ResultPathWrite,db:Session=Depends(db_session)):
+def save_path(key:str,payload:ResultPathWrite,db:Session=db_transaction):
     payload=payload.model_dump(exclude_unset=True)
     c,p=page(db,key)
     if p.result_kind=='test':fail('TEST_MODE_REQUIRED','测试路径请在独立对局中维护',422)
@@ -246,7 +246,7 @@ def save_path(key:str,payload:ResultPathWrite,db:Session=Depends(db_session)):
     return {'data':serialize(p)}
 
 @admin.get('/competitions/{key}/final-results/preview')
-def get_preview(key:str,db:Session=Depends(db_session)):
+def get_preview(key:str,db:Session=db_transaction):
     c,p=page(db,key);return {'data':preview(db,c,p)}
 
 def validate(db,c,p):
@@ -320,13 +320,13 @@ def validate(db,c,p):
     return {'draft_version':p.version,'source_fingerprint':digest_data(sources(db,c,p)),'warnings':[],'blocking_errors':errors}
 
 @admin.post('/competitions/{key}/final-results/validate')
-def check(key:str,payload:dict,db:Session=Depends(db_session)):
+def check(key:str,payload:dict,db:Session=db_transaction):
     c,p=page(db,key)
     if payload.get('expected_version')!=p.version:fail('VERSION','工作稿已变化',409)
     return {'data':validate(db,c,p)}
 
 @admin.post('/competitions/{key}/final-results/publish')
-def publish(key:str,payload:ResultPublishWrite,idempotency_key:str=Header(),db:Session=Depends(db_session)):
+def publish(key:str,payload:ResultPublishWrite,idempotency_key:str=Header(),db:Session=db_transaction):
     payload=payload.model_dump(exclude_unset=True)
     c,p=page(db,key)
     old=db.scalar(select(ResultRelease).where(ResultRelease.result_page_id==p.id,ResultRelease.idempotency_key==idempotency_key))
@@ -351,7 +351,7 @@ def publish(key:str,payload:ResultPublishWrite,idempotency_key:str=Header(),db:S
     return {'data':serialize(r)}
 
 @admin.post('/competitions/{key}/final-results/withdraw')
-def withdraw(key:str,payload:dict,db:Session=Depends(db_session)):
+def withdraw(key:str,payload:dict,db:Session=db_transaction):
     c,p=page(db,key);bump(db,p,payload.get('expected_version'))
     if not payload.get('reason'):fail('REASON','撤回须填写原因',422)
     if p.current_release_id:
@@ -360,7 +360,7 @@ def withdraw(key:str,payload:dict,db:Session=Depends(db_session)):
     return {'data':serialize(p)}
 
 @admin.get('/competitions/{key}/final-results/releases')
-def releases(key:str,db:Session=Depends(db_session)):
+def releases(key:str,db:Session=db_transaction):
     c,p=page(db,key);return {'data':[serialize(r) for r in rows(db,ResultRelease,c.id)]}
 
 SPONSOR_FIELDS=('english_name','display_code','logo_url','tagline','introduction','official_url','builtin_mark_key')
@@ -382,15 +382,15 @@ def media_fields(payload):
 def entity_dto(x):return {**serialize(x),**x.data}
 
 @admin.get('/sponsors')
-def sponsors(db:Session=Depends(db_session)):return {'data':[entity_dto(s) for s in db.scalars(select(Sponsor))]}
+def sponsors(db:Session=db_transaction):return {'data':[entity_dto(s) for s in db.scalars(select(Sponsor))]}
 
 @admin.post('/sponsors')
-def create_sponsor(payload:dict,db:Session=Depends(db_session)):
+def create_sponsor(payload:dict,db:Session=db_transaction):
     media_fields(payload);s=Sponsor(name=payload['name'],data_origin='test' if payload.get('data_origin')=='test' else 'regular',active=payload.get('active',True),data={k:payload[k] for k in SPONSOR_FIELDS if k in payload});db.add(s);db.flush();audit(db,'sponsor.create',s.id,{})
     return {'data':entity_dto(s)}
 
 @admin.patch('/sponsors/{key}')
-def edit_sponsor(key:str,payload:dict,db:Session=Depends(db_session)):
+def edit_sponsor(key:str,payload:dict,db:Session=db_transaction):
     s=db.get(Sponsor,key)
     if not s:fail('NOT_FOUND','品牌不存在',404)
     if s.version!=payload.get('expected_version'):fail('VERSION','品牌版本已变化',409)
@@ -401,13 +401,13 @@ def edit_sponsor(key:str,payload:dict,db:Session=Depends(db_session)):
     return {'data':entity_dto(s)}
 
 @admin.get('/competitions/{key}/partners')
-def partners(key:str,db:Session=Depends(db_session)):
+def partners(key:str,db:Session=db_transaction):
     c=competition(db,key)
     return {'data':[{**entity_dto(x),'display_order':partner_order(x)}
                     for x in sorted(rows(db,CompetitionPartner,c.id),key=lambda x:(partner_order(x),x.id))]}
 
 @admin.get('/competitions/{key}/prizes')
-def prizes(key:str,db:Session=Depends(db_session)):
+def prizes(key:str,db:Session=db_transaction):
     c=competition(db,key);return {'data':[entity_dto(x) for x in rows(db,Prize,c.id)]}
 
 def save_entity(db,c,p,payload,cls,obj=None):
@@ -435,27 +435,27 @@ def save_entity(db,c,p,payload,cls,obj=None):
     return {'data':entity_dto(obj)}
 
 @admin.post('/competitions/{key}/partners')
-def add_partner(key:str,payload:dict,db:Session=Depends(db_session)):
+def add_partner(key:str,payload:dict,db:Session=db_transaction):
     c,p=page(db,key);return save_entity(db,c,p,payload,CompetitionPartner)
 
 @admin.post('/competitions/{key}/prizes')
-def add_prize(key:str,payload:dict,db:Session=Depends(db_session)):
+def add_prize(key:str,payload:dict,db:Session=db_transaction):
     c,p=page(db,key);return save_entity(db,c,p,payload,Prize)
 
 @admin.patch('/competition-partners/{key}')
-def edit_partner(key:str,payload:dict,db:Session=Depends(db_session)):
+def edit_partner(key:str,payload:dict,db:Session=db_transaction):
     x=db.get(CompetitionPartner,key)
     if not x:fail('NOT_FOUND','合作项不存在',404)
     c,p=page(db,x.competition_id);return save_entity(db,c,p,payload,CompetitionPartner,x)
 
 @admin.patch('/prizes/{key}')
-def edit_prize(key:str,payload:dict,db:Session=Depends(db_session)):
+def edit_prize(key:str,payload:dict,db:Session=db_transaction):
     x=db.get(Prize,key)
     if not x:fail('NOT_FOUND','奖品不存在',404)
     c,p=page(db,x.competition_id);return save_entity(db,c,p,payload,Prize,x)
 
 @admin.put('/competitions/{key}/final-results/allocations')
-def save_allocations(key:str,payload:ResultAllocationsWrite,db:Session=Depends(db_session)):
+def save_allocations(key:str,payload:ResultAllocationsWrite,db:Session=db_transaction):
     payload=payload.model_dump(exclude_unset=True)
     c,p=page(db,key);bump(db,p,payload.get('expected_version'));ps={r.id:r for r in placements(db,p)}
     db.execute(delete(PrizeAllocation).where(PrizeAllocation.placement_id.in_(ps)))
@@ -471,15 +471,15 @@ def visible(db):
     return list(db.scalars(select(ResultRelease).join(ResultPage,ResultPage.current_release_id==ResultRelease.id).join(Competition,Competition.id==ResultRelease.competition_id).where(ResultRelease.status=='published',Competition.published==True,eligibility).order_by(ResultRelease.published_at.desc(),ResultRelease.id.desc())))
 
 @router.get('/results/latest')
-def latest(db:Session=Depends(db_session)):
+def latest(db:Session=db_transaction):
     rs=visible(db);return {'data':rs[0].public_snapshot if rs else None}
 
 @router.get('/results/editions')
-def editions(db:Session=Depends(db_session)):
+def editions(db:Session=db_transaction):
     return {'data':[{**r.public_snapshot['competition'],'release_id':r.id,'published_at':r.published_at} for r in visible(db)]}
 
 @router.get('/competitions/{key}/results')
-def public_result(key:str,db:Session=Depends(db_session)):
+def public_result(key:str,db:Session=db_transaction):
     c=competition(db,key)
     r=next((r for r in visible(db) if r.competition_id==c.id),None)
     if not r:fail('NOT_FOUND','最终排名尚未公开或已失效',404)
@@ -512,13 +512,13 @@ def invalidate_releases(db,context,instances):
 
 
 @admin.get('/competitions/{key}/final-results/test-matches')
-def get_test_matches(key:str,db:Session=Depends(db_session)):
+def get_test_matches(key:str,db:Session=db_transaction):
     c,p=page(db,key);test_rankings.require_test(c,p)
     return {'data':{'version':p.version,'items':[serialize(m) for m in test_rankings.matches(db,p)]}}
 
 
 @admin.put('/competitions/{key}/final-results/test-matches')
-def put_test_matches(key:str,payload:test_rankings.ScenarioWrite,db:Session=Depends(db_session)):
+def put_test_matches(key:str,payload:test_rankings.ScenarioWrite,db:Session=db_transaction):
     c,p=page(db,key);test_rankings.require_test(c,p)
     bump(db,p,payload.expected_version)
     test_rankings.save_matches(db,c,p,[m.model_dump() for m in payload.items])

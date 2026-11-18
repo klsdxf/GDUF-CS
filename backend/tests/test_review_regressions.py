@@ -2,6 +2,7 @@ from time import monotonic
 
 import pytest
 from fastapi import HTTPException
+from fastapi.testclient import TestClient
 from sqlalchemy import select
 from starlette.requests import Request
 
@@ -86,6 +87,31 @@ def test_login_sources_and_success_budget(client, monkeypatch):
     assert limit.value.status_code == 429
     reserve_login(source('192.0.2.1', '198.51.100.5, 192.0.2.2'))
     assert 'testclient' not in login_attempts  # Successful fixture login refunded.
+
+
+def test_login_transaction_closes_before_sending_cookie(client, monkeypatch):
+    dependency = app.dependency_overrides[db_session]
+    completed = False
+
+    def observed_transaction():
+        nonlocal completed
+        yield from dependency()
+        completed = True
+
+    async def observe_response(scope, receive, send):
+        async def observed_send(message):
+            if message['type'] == 'http.response.start':
+                assert completed, 'Cannot send a session cookie before the session is persisted'
+            await send(message)
+        await app(scope, receive, observed_send)
+
+    monkeypatch.setitem(app.dependency_overrides, db_session, observed_transaction)
+    with TestClient(observe_response) as browser:
+        response = browser.post('/api/v1/admin/auth/login', headers={'origin':'http://localhost:5173'}, json={
+            'username':'test-admin', 'password':'testing-only-12!',
+        })
+        assert response.status_code == 200
+        assert 'session' in browser.cookies
 
 
 def test_clear_live_match_and_preserve_status(client):

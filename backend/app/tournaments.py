@@ -92,12 +92,12 @@ def generate_graph(entries,kind,config):
     return nodes,edges
 
 @router.get('/competitions/{key}/stages')
-def stages(key:str,db:Session=Depends(db_session)):
+def stages(key:str,db:Session=db_transaction):
     c=competition(db,key)
     return {'data':[serialize(s) for s in db.scalars(select(Stage).where(Stage.competition_id==c.id))]}
 
 @router.post('/stages')
-def create_stage(payload:dict,db:Session=Depends(db_session)):
+def create_stage(payload:dict,db:Session=db_transaction):
     c=competition(db,payload['competition_id'],True)
     if payload.get('type') not in ('single','group_single','double'): fail('TYPE','请选择三种赛制之一')
     s=Stage(competition_id=c.id,name=payload['name'],type=payload['type'],config=payload.get('config',{}))
@@ -106,7 +106,7 @@ def create_stage(payload:dict,db:Session=Depends(db_session)):
     return {'data':serialize(s)}
 
 @router.patch('/stages/{key}')
-def edit_stage(key:str,payload:dict,db:Session=Depends(db_session)):
+def edit_stage(key:str,payload:dict,db:Session=db_transaction):
     s=db.get(Stage,key)
     if not s: fail('NOT_FOUND','阶段不存在',404)
     competition(db,s.competition_id,True)
@@ -116,7 +116,7 @@ def edit_stage(key:str,payload:dict,db:Session=Depends(db_session)):
     return {'data':serialize(s)}
 
 @router.put('/stages/{key}/entries')
-def entries(key:str,payload:dict,db:Session=Depends(db_session)):
+def entries(key:str,payload:dict,db:Session=db_transaction):
     s=db.get(Stage,key)
     if not s: fail('NOT_FOUND','阶段不存在',404)
     competition(db,s.competition_id,True)
@@ -128,7 +128,7 @@ def entries(key:str,payload:dict,db:Session=Depends(db_session)):
     return {'data':serialize(s)}
 
 @router.post('/stages/{key}/generate')
-def generate(key:str,payload:dict,db:Session=Depends(db_session)):
+def generate(key:str,payload:dict,db:Session=db_transaction):
     s=db.get(Stage,key)
     if not s:fail('NOT_FOUND','阶段不存在',404)
     competition(db,s.competition_id,True)
@@ -152,7 +152,7 @@ def generate(key:str,payload:dict,db:Session=Depends(db_session)):
     return {'data':{'id':s.id,'matches':[serialize(m) for m in matches.values()]}}
 
 @router.post('/stages/{key}/discard')
-def discard(key:str,db:Session=Depends(db_session)):
+def discard(key:str,db:Session=db_transaction):
     s=db.get(Stage,key)
     if not s:fail('NOT_FOUND','阶段不存在',404)
     competition(db,s.competition_id,True)
@@ -164,7 +164,7 @@ def discard(key:str,db:Session=Depends(db_session)):
     return {'data':True}
 
 @router.post('/schedule-generations/{key}/publish')
-def publish(key:str,db:Session=Depends(db_session)):
+def publish(key:str,db:Session=db_transaction):
     s=db.get(Stage,key)
     if not s:fail('NOT_FOUND','阶段不存在',404)
     c=competition(db,s.competition_id,True)
@@ -182,12 +182,12 @@ def publish(key:str,db:Session=Depends(db_session)):
     return {'data':serialize(s)}
 
 @router.get('/competitions/{key}/matches')
-def matches(key:str,db:Session=Depends(db_session)):
+def matches(key:str,db:Session=db_transaction):
     c=competition(db,key)
     return {'data':[serialize(m) for m in db.scalars(select(Match).where(Match.competition_id==c.id).order_by(Match.round,Match.code))]}
 
 @router.patch('/matches/{key}')
-def arrange(key:str,payload:dict,db:Session=Depends(db_session)):
+def arrange(key:str,payload:dict,db:Session=db_transaction):
     from datetime import datetime, timezone
     m=db.get(Match,key)
     if not m:fail('NOT_FOUND','比赛不存在',404)
@@ -208,7 +208,7 @@ def arrange(key:str,payload:dict,db:Session=Depends(db_session)):
     return {'data':serialize(m)}
 
 @router.get('/matches/{key}')
-def get_match(key:str,db:Session=Depends(db_session)):
+def get_match(key:str,db:Session=db_transaction):
     m=db.get(Match,key)
     if not m:fail('NOT_FOUND','比赛不存在',404)
     return {'data':serialize(m)}

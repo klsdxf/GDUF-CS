@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from .db import *
@@ -32,27 +32,27 @@ def announcement_dto(a):
     return {k:serialize(a)[k] for k in ('id','competition_id','title','body','published','pinned','publish_at','category_label','display_order')}
 
 @router.get('/competitions')
-def competitions(db:Session=Depends(db_session)):
+def competitions(db:Session=db_transaction):
     return {'data':[{**c_dto(c),'team_count':db.query(Registration).filter(Registration.competition_id==c.id,Registration.active==True).count()} for c in db.scalars(select(Competition).where(Competition.published==True).order_by(Competition.is_default.desc(),Competition.season.desc()))]}
 
 @router.get('/competitions/{key}')
-def get_competition(key:str,db:Session=Depends(db_session)):
+def get_competition(key:str,db:Session=db_transaction):
     c=public_c(db,key)
     return {'data':{**c_dto(c),'team_count':db.query(Registration).filter(Registration.competition_id==c.id,Registration.active==True).count()}}
 
 @router.get('/competitions/{key}/teams')
-def teams(key:str,db:Session=Depends(db_session)):
+def teams(key:str,db:Session=db_transaction):
     c=public_c(db,key)
     return {'data':[team_dto(db,t) for t in db.scalars(select(Registration).where(Registration.competition_id==c.id,Registration.active==True))]}
 
 @router.get('/competitions/{key}/teams/{team_id}')
-def team(key:str,team_id:str,db:Session=Depends(db_session)):
+def team(key:str,team_id:str,db:Session=db_transaction):
     c=public_c(db,key);t=db.get(Registration,team_id)
     if not t or t.competition_id!=c.id or not t.active:fail('NOT_FOUND','战队不存在',404)
     return {'data':{**team_dto(db,t),'matches':[match_dto(db,m) for m in db.scalars(select(Match).where(Match.competition_id==c.id,Match.published==True,(Match.a==t.id)|(Match.b==t.id)))]}}
 
 @router.get('/competitions/{key}/matches')
-def matches(key:str,date:str|None=None,stage:str|None=None,status:str|None=None,db:Session=Depends(db_session)):
+def matches(key:str,date:str|None=None,stage:str|None=None,status:str|None=None,db:Session=db_transaction):
     c=public_c(db,key)
     q=select(Match).where(Match.competition_id==c.id,Match.published==True)
     if stage:q=q.where(Match.stage_id==stage)
@@ -62,26 +62,26 @@ def matches(key:str,date:str|None=None,stage:str|None=None,status:str|None=None,
     return {'data':[match_dto(db,m) for m in rows]}
 
 @router.get('/matches/{key}')
-def match(key:str,db:Session=Depends(db_session)):
+def match(key:str,db:Session=db_transaction):
     m=db.get(Match,key)
     if not m or not m.published:fail('NOT_FOUND','比赛尚未公布',404)
     public_c(db,m.competition_id)
     return {'data':match_dto(db,m)}
 
 @router.get('/competitions/{key}/stages')
-def stages(key:str,db:Session=Depends(db_session)):
+def stages(key:str,db:Session=db_transaction):
     c=public_c(db,key)
     return {'data':[{'id':s.id,'name':s.name,'type':s.type,'config':{k:v for k,v in s.config.items() if k in ('best_of','qualify','groups','grand_final_reset')}} for s in db.scalars(select(Stage).where(Stage.competition_id==c.id,Stage.status=='published'))]}
 
 @router.get('/stages/{key}/standings')
-def stage_standings(key:str,db:Session=Depends(db_session)):
+def stage_standings(key:str,db:Session=db_transaction):
     s=db.get(Stage,key)
     if not s or s.status!='published':fail('NOT_FOUND','阶段尚未公布',404)
     public_c(db,s.competition_id)
     return {'data':standings(db,s)}
 
 @router.get('/stages/{key}/bracket')
-def bracket(key:str,db:Session=Depends(db_session)):
+def bracket(key:str,db:Session=db_transaction):
     s=db.get(Stage,key)
     if not s or s.status!='published':fail('NOT_FOUND','阶段尚未公布',404)
     public_c(db,s.competition_id)
@@ -96,24 +96,24 @@ def bracket(key:str,db:Session=Depends(db_session)):
     return {'data':{'matches':[match_dto(db,m) for m in ms],'edges':[serialize(e) for e in db.scalars(select(Advancement).where(Advancement.source.in_([m.id for m in ms])))],'bye_sources':byes}}
 
 @router.get('/competitions/{key}/announcements')
-def announcements(key:str,db:Session=Depends(db_session)):
+def announcements(key:str,db:Session=db_transaction):
     c=public_c(db,key)
     return {'data':[announcement_dto(a) for a in db.scalars(select(Announcement).where(Announcement.competition_id==c.id,Announcement.published==True,Announcement.publish_at<=now()).order_by(Announcement.pinned.desc(),Announcement.display_order,Announcement.publish_at.desc()))]}
 
 @router.get('/announcements/{key}')
-def announcement(key:str,db:Session=Depends(db_session)):
+def announcement(key:str,db:Session=db_transaction):
     a=db.get(Announcement,key)
     if not a or not a.published or a.publish_at.replace(tzinfo=timezone.utc)>now():fail('NOT_FOUND','公告尚未公布',404)
     public_c(db,a.competition_id)
     return {'data':announcement_dto(a)}
 
 @router.get('/competitions/{key}/live')
-def live(key:str,db:Session=Depends(db_session)):
+def live(key:str,db:Session=db_transaction):
     c=public_c(db,key)
     return {'data':[serialize(s) for s in db.scalars(select(LiveStream).where(LiveStream.competition_id==c.id))]}
 
 @router.get('/competitions/{key}/home')
-def home(key:str,db:Session=Depends(db_session)):
+def home(key:str,db:Session=db_transaction):
     c=public_c(db,key)
     ms=list(db.scalars(select(Match).where(Match.competition_id==c.id,Match.published==True).order_by(Match.scheduled_at,Match.round)))
     focus=next((m for m in ms if m.id==c.focus_match_id),None) or next((m for m in ms if m.status=='ongoing'),None) or next((m for m in ms if not m.confirmed and m.status!='cancelled'),None)

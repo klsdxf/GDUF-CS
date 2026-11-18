@@ -5,7 +5,7 @@ from datetime import timedelta, timezone
 from fastapi import Depends, HTTPException, Request
 from starlette.datastructures import UploadFile
 from sqlalchemy.orm import Session
-from .db import AdminSession, db_session, now
+from .db import AdminSession, db_transaction, now
 
 def digest(token):
     return hashlib.sha256(token.encode()).hexdigest()
@@ -13,7 +13,7 @@ def digest(token):
 def fail(code, message, status=422, details=None):
     raise HTTPException(status, {'code': code, 'message': message, 'details': details or {}})
 
-def authenticated(request: Request, db: Session = Depends(db_session)):
+def authenticated(request: Request, db: Session = db_transaction):
     session = db.get(AdminSession, digest(request.cookies.get('session', '')))
     if not session or session.expires_at.replace(tzinfo=timezone.utc) <= now():
         fail('UNAUTHORIZED', '请登录管理员账号', 401)

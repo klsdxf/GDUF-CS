@@ -137,7 +137,7 @@ def import_package(db,data,sha,idempotency_key):
 
 
 @router.post('/preview')
-def preview(payload:PreviewInput,db:Session=Depends(db_session)):
+def preview(payload:PreviewInput,db:Session=db_transaction):
     data,sha=package(payload.package_key,payload.package_version)
     batch=existing(db,data,sha)
     errors=[] if batch else conflicts(db,data)
@@ -152,7 +152,7 @@ def preview(payload:PreviewInput,db:Session=Depends(db_session)):
 
 
 @router.post('/{preview_id}/commit')
-def commit(preview_id:str,payload:CommitInput,idempotency_key:str=Header(),db:Session=Depends(db_session)):
+def commit(preview_id:str,payload:CommitInput,idempotency_key:str=Header(),db:Session=db_transaction):
     db.scalar(select(Admin).where(Admin.id==1).with_for_update())
     pv=db.get(SeedPreview,preview_id)
     if not pv:fail('NOT_FOUND','导入预览不存在',404)
@@ -170,7 +170,7 @@ def commit(preview_id:str,payload:CommitInput,idempotency_key:str=Header(),db:Se
 
 
 @router.get('/{batch_id}')
-def get_batch(batch_id:str,db:Session=Depends(db_session)):
+def get_batch(batch_id:str,db:Session=db_transaction):
     batch=db.get(SeedBatch,batch_id)
     if not batch:fail('NOT_FOUND','导入批次不存在',404)
     return {'data':summary(batch)}

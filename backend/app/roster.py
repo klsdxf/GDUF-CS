@@ -108,7 +108,7 @@ def save_roster(db, c, teams, mode, revision=False):
     return [team.id for team, t in targets]
 
 @router.post('/registrations/{key}/roster-revisions')
-def revise_roster(key:str,payload:dict,db:Session=Depends(db_session)):
+def revise_roster(key:str,payload:dict,db:Session=db_transaction):
     t=db.get(Registration,key)
     if not t:fail('NOT_FOUND','队伍不存在',404)
     c=competition(db,t.competition_id,True)
@@ -121,13 +121,13 @@ def revise_roster(key:str,payload:dict,db:Session=Depends(db_session)):
     return {'data':{'ids':ids,'message':'既有比赛仍引用发布时的名单版本；变更仅影响后续新增比赛'}}
 
 @router.get('/competitions')
-def list_competitions(data_origin:str='',db: Session = Depends(db_session)):
+def list_competitions(data_origin:str='',db: Session = db_transaction):
     query=select(Competition)
     if data_origin:query=query.where(Competition.data_origin==data_origin)
     return {'data': [serialize(c) for c in db.scalars(query)]}
 
 @router.post('/competitions')
-def create_competition(payload: CompetitionCreate, db: Session = Depends(db_session)):
+def create_competition(payload: CompetitionCreate, db: Session = db_transaction):
     payload=payload.model_dump()
     payload['config']=presentation_config(payload['config'])
     if not re.fullmatch('[a-z0-9-]{1,100}', payload.get('slug', '')) or not payload.get('name'):
@@ -138,7 +138,7 @@ def create_competition(payload: CompetitionCreate, db: Session = Depends(db_sess
     return {'data': serialize(c)}
 
 @router.patch('/competitions/{key}')
-def edit_competition(key: str, payload: dict, db: Session = Depends(db_session)):
+def edit_competition(key: str, payload: dict, db: Session = db_transaction):
     c = competition(db, key, True)
     if 'config' in payload:payload['config']=presentation_config({**c.config,**payload['config']})
     if payload.get('status',c.status) not in ('draft','roster_preparation','scheduling','ongoing','completed','archived'):fail('STATUS','无效赛事状态')
@@ -155,7 +155,7 @@ def edit_competition(key: str, payload: dict, db: Session = Depends(db_session))
     return {'data': serialize(c)}
 
 @router.post('/competitions/{key}/publish')
-def publish_competition(key: str, db: Session = Depends(db_session)):
+def publish_competition(key: str, db: Session = db_transaction):
     c = competition(db, key, True)
     if not c.rules or not c.map_pool:
         fail('CONFIG', '发布前请填写规则和地图池')
@@ -165,23 +165,23 @@ def publish_competition(key: str, db: Session = Depends(db_session)):
     return {'data': serialize(c)}
 
 @router.post('/competitions/{key}/archive')
-def archive(key: str, db: Session = Depends(db_session)):
+def archive(key: str, db: Session = db_transaction):
     c = competition(db, key, True); c.status = 'archived'
     audit(db, 'competition.archive', c.id, {})
     return {'data': serialize(c)}
 
 @router.get('/competitions/{key}/registrations')
-def registrations(key: str, db: Session = Depends(db_session)):
+def registrations(key: str, db: Session = db_transaction):
     c = competition(db,key)
     return {'data': [private_team(db,t) for t in db.scalars(select(Registration).where(Registration.competition_id == c.id, Registration.active == True))]}
 
 @router.post('/competitions/{key}/registrations')
-def add_team(key: str, payload: dict, db: Session = Depends(db_session)):
+def add_team(key: str, payload: dict, db: Session = db_transaction):
     c = competition(db,key,True)
     return {'data': save_roster(db,c,[payload],'create')}
 
 @router.patch('/registrations/{key}')
-def edit_team(key: str, payload: dict, db: Session = Depends(db_session)):
+def edit_team(key: str, payload: dict, db: Session = db_transaction):
     team = db.get(Registration,key)
     if not team: fail('NOT_FOUND','队伍不存在',404)
     c = competition(db,team.competition_id,True)
@@ -189,7 +189,7 @@ def edit_team(key: str, payload: dict, db: Session = Depends(db_session)):
     return {'data':save_roster(db,c,[payload],'update')}
 
 @router.post('/registrations/{key}/withdraw')
-def withdraw(key: str, db: Session = Depends(db_session)):
+def withdraw(key: str, db: Session = db_transaction):
     t = db.get(Registration,key)
     if not t: fail('NOT_FOUND','队伍不存在',404)
     c = competition(db,t.competition_id,True)
@@ -251,7 +251,7 @@ def parse_excel(raw):
     return list(teams.values()),errors
 
 @router.post('/competitions/{key}/imports/preview',openapi_extra=upload_schema(with_mode=True))
-async def preview_import(key: str, form=Depends(authorized_form), db: Session=Depends(db_session)):
+async def preview_import(key: str, form=Depends(authorized_form, scope='function'), db: Session=db_transaction):
     file=form['file']
     mode=form.get('mode','create')
     c=competition(db,key,True)
@@ -276,7 +276,7 @@ async def preview_import(key: str, form=Depends(authorized_form), db: Session=De
     return {'data':serialize(batch)}
 
 @router.post('/imports/{key}/commit')
-def commit_import(key: str, payload: dict, db: Session=Depends(db_session)):
+def commit_import(key: str, payload: dict, db: Session=db_transaction):
     b=db.get(ImportBatch,key)
     if not b: fail('NOT_FOUND','批次不存在',404)
     c=competition(db,b.competition_id,True)
@@ -291,6 +291,6 @@ def commit_import(key: str, payload: dict, db: Session=Depends(db_session)):
     return {'data':serialize(b)}
 
 @router.get('/competitions/{key}/imports')
-def imports(key:str,db:Session=Depends(db_session)):
+def imports(key:str,db:Session=db_transaction):
     c=competition(db,key)
     return {'data':[serialize(b) for b in db.scalars(select(ImportBatch).where(ImportBatch.competition_id==c.id).order_by(ImportBatch.created_at.desc()))]}

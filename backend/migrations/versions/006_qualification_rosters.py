@@ -30,7 +30,12 @@ def upgrade():
                 ).order_by(logs.c.created_at, logs.c.id).limit(1))
                 if change:
                     version = change['before']['version']
-            # Without a qualification log, preserve the last visible roster.
+            else:
+                historical_versions = conn.scalars(sa.select(snapshots.c.version)
+                    .where(snapshots.c.registration_id == team).limit(2)).all()
+                if len(historical_versions) != 1:
+                    raise RuntimeError(f'Cannot establish historical roster for match {match["id"]}, team {team}')
+                version = historical_versions[0]
             if conn.scalar(sa.select(snapshots.c.version).where(
                 snapshots.c.registration_id == team, snapshots.c.version == version
             )) is None:

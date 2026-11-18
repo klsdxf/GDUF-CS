@@ -38,10 +38,10 @@ def test_migrate_and_preserve_legacy_data(tmp_path,legacy):
                         db.execute(f'ALTER TABLE {table} DROP COLUMN {column}')
                 db.execute("UPDATE alembic_version SET version_num='002'")
     env={**os.environ,'DATABASE_URL':'sqlite:///'+path.as_posix()}
-    result=subprocess.run([sys.executable,'-m','alembic','upgrade','head'],cwd=Path(__file__).parents[1],env=env,capture_output=True,text=True)
+    result=subprocess.run([sys.executable,'-m','alembic','upgrade','head'],cwd=Path(__file__).parents[1],env=env,capture_output=True,text=True,timeout=45)
     assert result.returncode==0,result.stdout+result.stderr
     with sqlite3.connect(path) as db:
-        assert db.execute('SELECT version_num FROM alembic_version').fetchone()[0]=='006'
+        assert db.execute('SELECT version_num FROM alembic_version').fetchone()[0]=='008'
         tables={r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         assert {'result_test_matches','seed_batches','seed_entities','seed_previews'}<=tables
         assert db.execute('PRAGMA foreign_key_check').fetchall()==[]

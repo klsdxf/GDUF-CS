@@ -1,8 +1,8 @@
 from .test_platform import client, call, setup_competition, confirm
 from app.db import ResultRelease
 
-def prepare(client,kind='single',count=4,config=None,reset_trigger=False):
-    c,ids,s=setup_competition(client,count,kind,config)
+def prepare(client,kind='single',count=4,config=None,reset_trigger=False,slug='test-cup'):
+    c,ids,s=setup_competition(client,count,kind,config,slug=slug)
     for _ in range(30):
         ms=call(client,f'/admin/competitions/{c["id"]}/matches')
         ready=[m for m in ms if m['a'] and m['b'] and not m['confirmed'] and m['status']!='cancelled']
@@ -27,6 +27,8 @@ def test_publish_snapshot_withdraw_and_invalidation(client):
     c,ids,s,b,p=prepare(client)
     assert [(r['rank_from'],r['rank_to']) for r in p['placements']]==[(1,1),(2,2),(3,4),(3,4)]
     assert client.get('/api/v1/results/latest').json()['data'] is None
+    final_id=p['config']['final_match_id']
+    call(client,f'/admin/matches/{final_id}','patch',{'scheduled_at':'2026-11-21T14:00:00+08:00'})
     p=add_awards(client,c,b,p)
     v=call(client,b+'/validate','post',{'expected_version':p['version']})
     assert v['blocking_errors']==[],v
@@ -34,6 +36,8 @@ def test_publish_snapshot_withdraw_and_invalidation(client):
     response=client.post('/api/v1'+b+'/publish',json=payload,headers={'Idempotency-Key':'once'})
     assert response.status_code==200,response.text
     release=response.json()['data']
+    saved_final=next(m for m in release['source_dependencies']['matches'] if m['id']==final_id)
+    assert saved_final['scheduled_at']=='2026-11-21T06:00:00+00:00'
     again=client.post('/api/v1'+b+'/publish',json=payload,headers={'Idempotency-Key':'once'})
     assert again.json()['data']['id']==release['id']
     public=call(client,'/results/latest')
@@ -46,7 +50,7 @@ def test_publish_snapshot_withdraw_and_invalidation(client):
     p=call(client,b+'/draft')
     call(client,b+'/draft','put',{**p['config'],'expected_version':p['version'],'display_meta':{'edition_label':'新标题'}})
     assert call(client,'/results/latest')['display'].get('edition_label')=='测试杯'
-    final_id=p['config']['final_match_id'];m=call(client,'/admin/matches/'+final_id)
+    m=call(client,'/admin/matches/'+final_id)
     impact=call(client,f'/admin/matches/{final_id}/result/revise-preview','post',{'maps':[{'map_name':'Mirage','score_a':13,'score_b':7}]})
     assert release['id'] in impact['affected_releases']
     call(client,f'/admin/matches/{final_id}/result/revise','post',{'expected_version':m['version'],'reason':'修正比分','maps':[{'map_name':'Mirage','score_a':13,'score_b':7}]})

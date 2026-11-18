@@ -1,6 +1,6 @@
 """Initial relational schema."""
 from alembic import op
-from app.db import Base
+from migrations.legacy_schema import Base
 revision = '001'
 down_revision = None
 

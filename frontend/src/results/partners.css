@@ -162,6 +162,12 @@
   height: auto;
 }
 
+.results-partner-fallback small {
+  display: block;
+  margin-top: .45em;
+  font: 700 clamp(12px, 2vw, 18px)/1.2 var(--text, sans-serif);
+}
+
 .results-partners-enter .results-partner-mark {
   animation: results-partner-reveal .56s cubic-bezier(.2, .75, .25, 1) var(--partner-delay, 0ms) backwards;
 }

@@ -49,7 +49,8 @@ export function renderPartners(partners: ResultPartner[], legacyMark: string) {
   if (!partners.length) return ''
   const items = partners.map((partner, index) => {
     const name = e(partner.english_name || partner.name)
-    const fallback = `<span class="results-partner-fallback">${partner.builtin_mark_key === 'nexcore' ? legacyMark : ''}<strong>${name}</strong></span>`
+    const localName = partner.english_name && partner.english_name !== partner.name ? `<small>${e(partner.name)}</small>` : ''
+    const fallback = `<span class="results-partner-fallback">${partner.builtin_mark_key === 'nexcore' ? legacyMark : ''}<span><strong>${name}</strong>${localName}</span></span>`
     const image = partner.logo_url ? `<img data-partner-logo src="${e(partner.logo_url)}" alt="${e(partner.name)}" decoding="async">` : ''
     const style = index % 2 ? ' style="--partner-delay:65ms"' : ''
     const brand = partnerDetails(partner)

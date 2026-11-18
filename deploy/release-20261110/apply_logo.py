@@ -7,8 +7,8 @@ from copy import deepcopy
 from pathlib import Path
 from sqlalchemy import select
 from app.db import Session, Admin, Registration, RosterSnapshot, ResultRelease
-from app import final_results as fr
-from app.schemas import ResultPublishWrite
+from app.services import final_result_service as fr
+from app.infrastructure.outbox import mark_public_change
 
 parser=argparse.ArgumentParser()
 parser.add_argument('--apply',action='store_true')
@@ -57,6 +57,8 @@ with Session.begin() as db:
             raise SystemExit('Unexpected non-logo changes; transaction rolled back')
         check=fr.validate(db,c,p)
         if check['blocking_errors']:raise SystemExit(json.dumps(check['blocking_errors'],ensure_ascii=True))
-        result=fr.publish(c.id,ResultPublishWrite(expected_version=p.version,expected_source_fingerprint=check['source_fingerprint'],reason='Apply the user-approved Poppin\'Party logo only'),'aliyun-logo-'+args.sha256,db)['data']
+        result=fr.publish_result(db,c.id,{'expected_version':p.version,'expected_source_fingerprint':check['source_fingerprint'],
+                                 'reason':"Apply the user-approved Poppin'Party logo only"},'aliyun-logo-'+args.sha256)['data']
+        mark_public_change(db)
         fr.audit(db,'team.logo',team.id,{'logo':url,'reason':'User-approved logo only'})
         print(json.dumps({'release_id':result['id'],'applied':True},ensure_ascii=True))

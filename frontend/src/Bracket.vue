@@ -1,10 +1,21 @@
 <script setup lang="ts">
 import {ref,watch,computed} from 'vue'
 import {api} from './api'
-const props=defineProps<{stageId:string}>()
+const props=defineProps<{stageId:string;single?:boolean}>()
 const graph=ref<any>(null),error=ref('')
 watch(()=>props.stageId,async(id)=>{graph.value=null;error.value='';if(id)try{graph.value=await api('/stages/'+id+'/bracket')}catch(e:any){error.value=e.message}},{immediate:true})
-const rounds=computed(()=>{const groups:Record<string,any[]>={};for(const m of graph.value?.matches||[])(groups[m.bracket+' / 第'+m.round+'轮']??=[]).push(m);return groups})
+const rounds=computed(()=>{
+ const groups:Record<string,any[]>={}
+ const matches=graph.value?.matches||[]
+ const finalRound=props.single?Math.max(0,...matches.map((m:any)=>m.round)):0
+ const knockoutLabels=['决赛','半决赛','四分之一决赛']
+ for(const m of matches){
+  const stageName=m.bracket==='upper'?knockoutLabels[finalRound-m.round]:undefined
+  const label=m.label||stageName||m.bracket+' / 第'+m.round+'轮'
+  ;(groups[label]??=[]).push(m)
+ }
+ return groups
+})
 function source(value:string){value=value||'';if(value.startsWith('group:')){const[,g,r]=value.split(':');return g+'组第'+r+'名'}return value.replace(':winner',' 胜者').replace(':loser',' 败者')||'待定'}
 </script>
 <template><p v-if="error" role="alert">{{error}}</p><p v-else-if="!graph">正在加载对阵图…</p><template v-else><p v-if="graph.bye_sources?.length">轮空晋级（不计比赛胜利）：{{graph.bye_sources.map((b:any)=>b.name||source(b.source)).join('、')}}</p><p v-if="!graph.matches.length">暂无已发布对阵</p><div class="bracket-board" aria-label="完整对阵图，可横向滚动" tabindex="0"><section v-for="(matches,round) in rounds"><h2>{{round}}</h2><RouterLink v-for="m in matches" :to="'/matches/'+m.id" class="bracket-node"><small>{{m.code}} · BO{{m.best_of}}{{m.status==='cancelled'?' · 已取消':''}}</small><p>{{m.teams[0]?.name||source(m.source_a)}} <strong>{{m.confirmed?m.result.wins_a:'–'}}</strong></p><p>{{m.teams[1]?.name||source(m.source_b)}} <strong>{{m.confirmed?m.result.wins_b:'–'}}</strong></p></RouterLink></section></div><details v-if="graph.edges?.length"><summary>晋级来源关系</summary><p v-for="edge in graph.edges">{{graph.matches.find((m:any)=>m.id===edge.source)?.code||edge.source}}（{{edge.outcome==='winner'?'胜者':'败者'}}） → {{graph.matches.find((m:any)=>m.id===edge.target)?.code||edge.target}} · {{edge.slot}}</p></details></template></template>

@@ -3,43 +3,54 @@ import os
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, select
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from openpyxl import Workbook
 from app.db import Base, Admin, Competition, Registration, Match, Stage, Advancement, db_session
-from app.main import app, ph, login_attempts, public_cache, public_locks
+from app.main import app, ph
+from app import public
+from app.infrastructure.rate_limit import login_limiter
 from app.tournaments import generate_graph
+from .support import TestLoginLimiter
 
 @pytest.fixture
-def client():
+def client(monkeypatch):
     test_url=os.getenv('TEST_DATABASE_URL')
     if test_url:
-        assert test_url.rsplit('/',1)[-1]=='gduf_test','仅允许独立 gduf_test 数据库'
+        url = make_url(test_url)
+        assert (os.getenv('GDUF_TEST_ISOLATED') == '1' and url.database == 'gduf_test'
+                and url.host in ('localhost', '127.0.0.1')), '仅允许隔离的本机 gduf_test 数据库'
         engine=create_engine(test_url)
         Base.metadata.drop_all(engine)
     else:engine=create_engine('sqlite://',connect_args={'check_same_thread':False},poolclass=StaticPool)
     Base.metadata.create_all(engine);factory=sessionmaker(engine,expire_on_commit=False)
     def dependency():
         with factory.begin() as db:yield db
-    app.dependency_overrides[db_session]=dependency
+    def query(load):
+        with factory() as db:
+            return load(db)
+    limiter = TestLoginLimiter()
+    monkeypatch.setitem(app.dependency_overrides, db_session, dependency)
+    monkeypatch.setitem(app.dependency_overrides, login_limiter, lambda: limiter)
+    monkeypatch.setattr(public, 'snapshot_read', query)
+    monkeypatch.delenv('REDIS_URL', raising=False)
     with factory.begin() as db:db.add(Admin(id=1,username='test-admin',password_hash=ph.hash('testing-only-12!')))
-    login_attempts.clear()
-    public_cache.clear();public_locks.clear()
     with TestClient(app) as client:
         client.headers['origin']='http://localhost:5173'
         response=client.post('/api/v1/admin/auth/login',json={'username':'test-admin','password':'testing-only-12!'})
         assert response.status_code==200,response.text
         client.headers['x-csrf-token']=response.json()['data']['csrf']
         yield client
-    app.dependency_overrides.clear();engine.dispose()
+    engine.dispose()
 
 def call(client,path,method='get',payload=None,status=200):
     r=getattr(client,method)('/api/v1'+path,**({'json':payload} if payload is not None else {}))
     assert r.status_code==status,r.text
     return r.json().get('data')
 
-def setup_competition(client,count=4,kind='single',config=None):
-    c=call(client,'/admin/competitions','post',{'name':'测试杯','slug':'test-cup','rules':'测试赛规','map_pool':['Mirage','Inferno','Nuke','Anubis','Ancient']})
+def setup_competition(client,count=4,kind='single',config=None,slug='test-cup'):
+    c=call(client,'/admin/competitions','post',{'name':'测试杯','slug':slug,'rules':'测试赛规','map_pool':['Mirage','Inferno','Nuke','Anubis','Ancient']})
     ids=[]
     for t in range(count):
         team={'code':f'T{t:03}','name':f'战队{t}','contact':'private-contact','members':[{'nickname':f'选手{t}-{i}','steam_id':str(76561198000000000+t*10+i),'role':'正式','captain':i==0} for i in range(5)]}
@@ -112,7 +123,7 @@ def test_complete_single_event_and_revisions(client):
     second=next(m for m in matches if m['a'] and m['b'] and not m['confirmed']);confirm(client,second)
     matches=call(client,f'/admin/competitions/{c["id"]}/matches')
     final=next(m for m in matches if not m['confirmed'])
-    call(client,f'/admin/matches/{final["id"]}','patch',{'status':'ongoing'})
+    final=call(client,f'/admin/matches/{final["id"]}','patch',{'status':'ongoing','expected_version':final['version']})
     call(client,f'/admin/matches/{first["id"]}/result/revise','post',{'expected_version':revised['version'],'reason':'不允许覆盖下游','maps':[{'map_name':'Mirage','score_a':13,'score_b':6}]},409)
     confirm(client,final)
     call(client,f'/admin/competitions/{c["id"]}/archive','post',{})
@@ -161,7 +172,7 @@ def test_bo_completion_and_reject_extra_maps(client,bo):
     needed=bo//2+1
     maps=[{'map_name':name,'score_a':13,'score_b':7} for name in c['map_pool'][:needed]]
     if needed>1:
-        r=call(client,f'/admin/matches/{m["id"]}/result','put',{'expected_version':0,'maps':maps[:-1]})
+        r=call(client,f'/admin/matches/{m["id"]}/result','put',{'expected_version':m['version'],'maps':maps[:-1]})
         call(client,f'/admin/matches/{m["id"]}/result/confirm','post',{'expected_version':r['version']},422)
         m=r
     r=call(client,f'/admin/matches/{m["id"]}/result','put',{'expected_version':m['version'],'maps':maps})

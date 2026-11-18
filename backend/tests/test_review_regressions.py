@@ -1,5 +1,3 @@
-from time import monotonic
-
 import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
@@ -7,7 +5,8 @@ from sqlalchemy import select
 from starlette.requests import Request
 
 from app.db import ResultPage, db_session
-from app.main import app, login_attempts, login_source, reserve_login
+from app.main import app, login_source
+from app.infrastructure.rate_limit import login_limiter
 from app.tournaments import generate_graph
 from .test_platform import call, client, confirm, setup_competition
 
@@ -81,12 +80,14 @@ def test_login_sources_and_success_budget(client, monkeypatch):
     visitor = source('192.0.2.1', '198.51.100.4, 192.0.2.2')
     assert visitor == '198.51.100.4'
     assert source('198.51.100.5', visitor) == '198.51.100.5'
-    login_attempts[visitor] = [monotonic()] * 10
+    limiter = app.dependency_overrides[login_limiter]()
+    for _ in range(10):
+        limiter.reserve(visitor)
     with pytest.raises(HTTPException) as limit:
-        reserve_login(visitor)
+        limiter.reserve(visitor)
     assert limit.value.status_code == 429
-    reserve_login(source('192.0.2.1', '198.51.100.5, 192.0.2.2'))
-    assert 'testclient' not in login_attempts  # Successful fixture login refunded.
+    limiter.reserve(source('192.0.2.1', '198.51.100.5, 192.0.2.2'))
+    assert 'testclient' not in limiter.attempts
 
 
 def test_login_transaction_closes_before_sending_cookie(client, monkeypatch):

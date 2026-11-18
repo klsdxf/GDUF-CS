@@ -10,8 +10,8 @@ from .db import AdminSession, db_transaction, now
 def digest(token):
     return hashlib.sha256(token.encode()).hexdigest()
 
-def fail(code, message, status=422, details=None):
-    raise HTTPException(status, {'code': code, 'message': message, 'details': details or {}})
+def fail(code, message, status=422, details=None, *, headers=None):
+    raise HTTPException(status, {'code': code, 'message': message, 'details': details or {}}, headers=headers)
 
 def authenticated(request: Request, db: Session = db_transaction):
     session = db.get(AdminSession, digest(request.cookies.get('session', '')))
@@ -28,7 +28,11 @@ def authenticated(request: Request, db: Session = db_transaction):
 
 async def authorized_form(request: Request, session=Depends(authenticated)):
     # Declaring File/Form on the endpoint makes FastAPI read the body before auth.
-    async with request.form(max_files=1, max_fields=1) as form:
+    maximum = (2 if request.url.path.endswith('/assets') else 5) * 1024 * 1024
+    length = request.headers.get('content-length')
+    if length and length.isdecimal() and len(length) <= 12 and int(length) > maximum + 64 * 1024:
+        fail('FILE_SIZE', '上传请求超过大小上限', 413)
+    async with request.form(max_files=1, max_fields=1, max_part_size=64 * 1024) as form:
         if not isinstance(form.get('file'), UploadFile):
             fail('VALIDATION', '请选择上传文件')
         yield form

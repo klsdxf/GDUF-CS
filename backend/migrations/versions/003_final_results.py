@@ -1,7 +1,7 @@
 """Final rankings, sponsorship and immutable public releases."""
 from alembic import op
 import sqlalchemy as sa
-from app.db import Base
+from migrations.legacy_schema import Base
 revision = '003'
 down_revision = '002'
 TABLES = ['competition_result_pages','result_placements','result_path_matches','sponsors','competition_partners','prizes','prize_allocations','result_releases']

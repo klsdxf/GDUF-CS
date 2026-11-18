@@ -9,8 +9,12 @@ os.environ['DATABASE_URL']='sqlite:///'+path.as_posix()
 os.environ['PUBLIC_ORIGIN']='http://localhost:5191'
 from app.db import Base,engine,Session,Admin
 from app.main import app,ph
+from app.infrastructure.rate_limit import login_limiter
+from tests.support import TestLoginLimiter
 
 Base.metadata.create_all(engine)
+limiter = TestLoginLimiter()
+app.dependency_overrides[login_limiter] = lambda: limiter
 with Session.begin() as db:
     db.add(Admin(id=1,username='dataset-admin',password_hash=ph.hash('dataset-acceptance-only!')))
 try:

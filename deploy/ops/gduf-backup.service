@@ -1,0 +1,10 @@
+[Unit]
+Description=GDUF CS daily database and media backup
+OnFailure=gduf-operation-failure@%n.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/gduf-cs
+EnvironmentFile=/etc/gduf/backup.env
+ExecStart=/usr/bin/bash scripts/backup-offsite.sh
+TimeoutStartSec=30min

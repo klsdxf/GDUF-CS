@@ -1,0 +1,6 @@
+[Unit]
+Description=Record failed GDUF CS operations
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/logger -p daemon.err -t gduf-ops "Systemd operation failed: %I"

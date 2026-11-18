@@ -1,7 +1,7 @@
 """Backend test data, independent result scenarios and import provenance."""
 from alembic import op
 import sqlalchemy as sa
-from app.db import Base
+from migrations.legacy_schema import Base
 
 revision = '004'
 down_revision = '003'

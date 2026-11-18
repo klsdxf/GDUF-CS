@@ -1,0 +1,9 @@
+[Unit]
+Description=Run the GDUF CS backup every morning
+
+[Timer]
+OnCalendar=*-*-* 04:30:00 Asia/Shanghai
+Persistent=true
+
+[Install]
+WantedBy=timers.target

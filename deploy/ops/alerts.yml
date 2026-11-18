@@ -1,0 +1,43 @@
+groups:
+  - name: gduf-cs
+    rules:
+      - alert: GdufApiUnavailable
+        expr: up{job="gduf-api"} == 0
+        for: 30s
+        annotations:
+          summary: GDUF API metrics or database unavailable
+      - alert: GdufServerErrors
+        expr: sum(rate(gduf_http_requests_total{status=~"5.."}[5m])) / clamp_min(sum(rate(gduf_http_requests_total[5m])), 0.001) > 0.01
+        for: 5m
+        annotations:
+          summary: GDUF API 5xx rate above 1%
+      - alert: GdufCacheInvalidationDelay
+        expr: max(gduf_cache_outbox_oldest_seconds) > 10
+        for: 30s
+        annotations:
+          summary: GDUF cache invalidation events are waiting
+      - alert: GdufRedisUnavailable
+        expr: gduf_redis_up == 0
+        for: 30s
+        annotations:
+          summary: GDUF Redis unavailable
+      - alert: GdufRedisMemory
+        expr: gduf_redis_max_bytes > 0 and gduf_redis_used_bytes / gduf_redis_max_bytes > 0.8
+        for: 2m
+        annotations:
+          summary: GDUF Redis memory above 80%
+      - alert: GdufLoginUnavailable
+        expr: gduf_new_login_ready == 0
+        for: 2m
+        annotations:
+          summary: GDUF new logins unavailable
+      - alert: GdufBackupStale
+        expr: absent(gduf_backup_last_success_timestamp_seconds) or time() - gduf_backup_last_success_timestamp_seconds > 93600
+        for: 10m
+        annotations:
+          summary: GDUF offsite backup last success missing or older than 26 hours
+      - alert: GdufDiskLow
+        expr: node_filesystem_avail_bytes{job="gduf-host",fstype!~"tmpfs|overlay|squashfs"} / node_filesystem_size_bytes{job="gduf-host"} < 0.15
+        for: 5m
+        annotations:
+          summary: GDUF host filesystem has less than 15% free space

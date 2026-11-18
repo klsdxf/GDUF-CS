@@ -1,4 +1,7 @@
 services:
+  api:
+    environment:
+      LOGIN_TRUSTED_PROXIES: ${LOGIN_TRUSTED_PROXIES:-web,edge}
   edge:
     image: nginx:1.27-alpine
     ports: ['80:80', '443:443']

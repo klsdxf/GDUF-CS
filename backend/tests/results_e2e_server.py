@@ -12,9 +12,13 @@ os.environ['MEDIA_DIR']=str(path.parent/'media')
 from fastapi.testclient import TestClient
 from app.db import Base,engine,Session,Admin
 from app.main import app,ph
+from app.infrastructure.rate_limit import login_limiter
+from tests.support import TestLoginLimiter
 from tests.test_final_results import prepare,add_awards
 import uvicorn
 Base.metadata.create_all(engine)
+limiter = TestLoginLimiter()
+app.dependency_overrides[login_limiter] = lambda: limiter
 with Session.begin() as db:db.add(Admin(id=1,username='results-admin',password_hash=ph.hash('results-acceptance-only!')))
 with TestClient(app) as client:
     client.headers['origin']=os.environ['PUBLIC_ORIGIN']

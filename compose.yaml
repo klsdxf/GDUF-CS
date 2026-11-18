@@ -1,4 +1,22 @@
 services:
+  redis:
+    image: redis:8.10.3-alpine@sha256:7958cfbb9d152f87dadfbc89f1b0b15938f0b81ff8982feb327476f4911935c3
+    entrypoint: [/bin/sh, /gduf-redis.sh]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+      - ./deploy/redis.sh:/gduf-redis.sh:ro
+    mem_limit: 256m
+    healthcheck:
+      test: [CMD-SHELL, 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli --user gduf ping | grep -q PONG']
+      interval: 5s
+      timeout: 2s
+      retries: 10
+    restart: unless-stopped
+    logging: &logs
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}
   db:
     image: postgres:16-alpine
     environment:
@@ -11,34 +29,54 @@ services:
       interval: 5s
       retries: 10
     restart: unless-stopped
-    logging: &logs
-      driver: json-file
-      options: {max-size: 10m, max-file: '3'}
+    logging: *logs
   migrate:
+    image: ${API_IMAGE:-gduf-api:local}
     build: ./backend
     environment: &api_env
       DATABASE_URL: postgresql+psycopg://gduf:${DB_PASSWORD}@db/gduf
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?set PUBLIC_ORIGIN}
       ENV: production
       MEDIA_DIR: /app/storage/media
+      DB_SESSION_OPTIONS: -c lock_timeout=10s -c statement_timeout=120s
     command: [alembic, upgrade, head]
     depends_on:
       db: {condition: service_healthy}
   api:
-    build: ./backend
-    environment:
+    image: ${API_IMAGE:-gduf-api:local}
+    pull_policy: never
+    environment: &runtime_env
       <<: *api_env
-      LOGIN_TRUSTED_PROXIES: ${LOGIN_TRUSTED_PROXIES:-web,edge}
+      DB_SESSION_OPTIONS: -c lock_timeout=2s -c statement_timeout=5s -c idle_in_transaction_session_timeout=15s
+      REDIS_URL: redis://gduf:${REDIS_PASSWORD:?set REDIS_PASSWORD}@redis:6379/0
+      REDIS_NAMESPACE: ${REDIS_NAMESPACE:-gduf:production:v1}
+      LOGIN_SOURCE_SECRET: ${LOGIN_SOURCE_SECRET:?set LOGIN_SOURCE_SECRET}
+      LOGIN_TRUSTED_PROXIES: ${LOGIN_TRUSTED_PROXIES:-web}
+      RES_OPTIONS: attempts:1 timeout:1
     volumes: [media:/app/storage/media]
     depends_on:
       migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
     healthcheck:
       test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
       interval: 30s
       retries: 3
     restart: unless-stopped
     logging: *logs
+  cache-outbox:
+    image: ${API_IMAGE:-gduf-api:local}
+    pull_policy: never
+    environment:
+      <<: *runtime_env
+      DB_POOL_SIZE: 2
+    command: [python, -m, app.jobs.cache_outbox]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+    restart: unless-stopped
+    logging: *logs
   web:
+    image: ${WEB_IMAGE:-gduf-web:local}
     build:
       context: ./frontend
       args:
@@ -51,3 +89,4 @@ services:
 volumes:
   database:
   media:
+  redis_data:

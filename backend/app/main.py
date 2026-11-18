@@ -1,54 +1,47 @@
+from contextlib import asynccontextmanager
+from datetime import timedelta
+from ipaddress import ip_address
+import logging
 import os
 import secrets
-import asyncio
-import time
 import socket
-from collections import OrderedDict
-from ipaddress import ip_address
-from threading import Lock
-from datetime import timedelta
+
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
-from fastapi import FastAPI, Depends, Request, Response, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, Depends, Request, Response
 from fastapi.exceptions import RequestValidationError
-from sqlalchemy import select, delete, text
-from sqlalchemy.exc import IntegrityError
+from fastapi.responses import JSONResponse
+from sqlalchemy import delete, func, select, text
+from sqlalchemy.exc import IntegrityError, OperationalError, TimeoutError as PoolTimeout
 from sqlalchemy.orm import Session
-from .db import Admin, AdminSession, db_transaction, now
+from starlette.exceptions import HTTPException
+
+from .db import Admin, AdminSession, CacheInvalidation, db_transaction, engine, now
+from .infrastructure import outbox  # register database transaction listeners
+from .infrastructure.rate_limit import login_limiter
+from .infrastructure.redis_client import close, client as redis_client, key
+from .infrastructure.request_context import RequestContext, request_id
 from .security import authenticated, digest, fail
 from .schemas import Login, PasswordChange
+from .schemas_public import Data
+from .schemas_responses import ErrorEnvelope, SessionData
 
-app = FastAPI(title='广金主场 API', version='1.0.0')
-public_cache = {}
-public_locks = {}
+logger = logging.getLogger(__name__)
 
-@app.middleware('http')
-async def read_cache(request, call_next):
-    path=request.url.path
-    if request.method=='GET' and path.startswith('/api/v1/') and '/admin/' not in path and not path.endswith('/health') and '/results' not in path:
-        key=str(request.url)
-        if len(public_locks)>512:
-            public_locks.clear()
-        lock=public_locks.setdefault(key,asyncio.Lock())
-        async with lock:
-            cached=public_cache.get(key)
-            if cached and cached[0]>time.monotonic():return Response(cached[1],media_type='application/json')
-            response=await call_next(request)
-            if response.status_code==200:
-                body=b''.join([part async for part in response.body_iterator])
-                if len(public_cache)>512:public_cache.clear()
-                public_cache[key]=(time.monotonic()+2,body)
-                return Response(body,status_code=200,headers=dict(response.headers))
-            return response
-    response=await call_next(request)
-    if request.method not in ('GET','HEAD') and '/admin/' in path and response.status_code<300:
-        public_cache.clear()
-    return response
+
+@asynccontextmanager
+async def lifespan(app):
+    logging.basicConfig(level=logging.INFO, format='%(message)s')
+    try:
+        yield
+    finally:
+        close()
+
+
+app = FastAPI(title='广金主场 API', version='1.0.0', lifespan=lifespan,
+              responses={422: {'model': ErrorEnvelope}})
+app.add_middleware(RequestContext)
 ph = PasswordHasher()
-login_attempts = OrderedDict()
-login_lock = Lock()
-
 
 def login_source(request):
     peer = request.client.host
@@ -77,52 +70,125 @@ def login_source(request):
     return peer
 
 
-def reserve_login(ip):
-    with login_lock:
-        stamp = time.monotonic()
-        cutoff = stamp - 300
-        while login_attempts and next(iter(login_attempts.values()))[-1] <= cutoff:
-            login_attempts.popitem(last=False)
-        attempts = [t for t in login_attempts.get(ip, []) if t > cutoff]
-        if len(attempts) >= 10:
-            fail('RATE_LIMIT', '登录过于频繁，五分钟后重试', 429)
-        login_attempts[ip] = [*attempts, stamp]
-        login_attempts.move_to_end(ip)
-        return stamp
+
+
+def error_response(status, code, message, details=None, headers=None):
+    return JSONResponse(
+        {'error': {'code': code, 'message': message, 'details': details if details is not None else {},
+                   'request_id': request_id.get()}},
+        status_code=status, headers=headers,
+    )
+
 
 @app.exception_handler(HTTPException)
 async def http_error(request, exc):
-    detail = exc.detail if isinstance(exc.detail, dict) else {'code': 'HTTP_ERROR', 'message': exc.detail}
-    return JSONResponse({'error': {**detail, 'request_id': secrets.token_hex(8)}}, status_code=exc.status_code)
+    detail = exc.detail if isinstance(exc.detail, dict) else {'code': 'HTTP_ERROR', 'message': str(exc.detail)}
+    return error_response(exc.status_code, detail['code'], detail['message'], detail.get('details'), exc.headers)
+
 
 @app.exception_handler(RequestValidationError)
 async def validation_error(request, exc):
-    return JSONResponse({'error': {'code': 'VALIDATION', 'message': '字段格式错误', 'details': str(exc), 'request_id': secrets.token_hex(8)}}, status_code=422)
+    details = [{'path': [str(part) for part in item['loc']], 'code': item['type'],
+                'message': '缺少必填字段' if item['type'] == 'missing' else '字段值不符合接口约定'}
+               for item in exc.errors()]
+    return error_response(422, 'VALIDATION', '字段格式错误', details)
+
 
 @app.exception_handler(IntegrityError)
 async def integrity_error(request, exc):
-    return JSONResponse({'error': {'code': 'CONFLICT', 'message': '数据冲突，请刷新后重试', 'request_id': secrets.token_hex(8)}}, status_code=409)
+    return error_response(409, 'CONFLICT', '数据冲突，请刷新后重试')
 
-@app.middleware('http')
-async def private_headers(request, call_next):
-    response = await call_next(request)
-    if '/admin/' in request.url.path or '/results' in request.url.path:
-        response.headers['Cache-Control'] = 'no-store'
-    response.headers['X-Content-Type-Options'] = 'nosniff'
-    return response
 
+@app.exception_handler(OperationalError)
+@app.exception_handler(PoolTimeout)
+async def database_error(request, exc):
+    from .infrastructure.metrics import event
+    sqlstate = getattr(getattr(exc, 'orig', None), 'sqlstate', None)
+    code = {'55P03': 'DB_LOCK_TIMEOUT', '40P01': 'DB_DEADLOCK', '57014': 'DB_STATEMENT_TIMEOUT'}.get(
+        sqlstate, 'DB_UNAVAILABLE')
+    event(code.lower())
+    logger.warning('database_request_unavailable', extra={'request_id': request_id.get(), 'error_code': code})
+    return error_response(503, code, '数据库暂不可用，请稍后重试', headers={'Retry-After': '1'})
+
+
+@app.get('/health/live', include_in_schema=False)
+def live_health():
+    return {'data': {'status': 'ok'}}
+
+
+@app.get('/health/ready', include_in_schema=False)
 @app.get('/api/v1/health')
 def health(db: Session = db_transaction):
     db.execute(text('SELECT 1'))
     return {'data': {'status': 'ok'}}
 
-@app.post('/api/v1/admin/auth/login')
-def login(payload: Login, request: Request, response: Response, db: Session = db_transaction):
+
+@app.get('/internal/components', include_in_schema=False)
+def components():
+    from redis.exceptions import RedisError
+    from .infrastructure.redis_client import CONTROL, RUN_ID
+    redis = redis_client()
+    state = 'unavailable'
+    try:
+        if redis is not None:
+            state = redis.eval(RUN_ID + """
+                if not ready(KEYS[1]) then return 'recovering' end
+                local until_ms = tonumber(redis.call('HGET', KEYS[1], 'login_until'))
+                if millis() < until_ms then return 'login_protected' end
+                return 'ready'
+            """, 1, key(CONTROL)).decode()
+    except RedisError:
+        pass
+    return {'data': {'redis': state, 'new_login': state == 'ready'}}
+
+
+@app.get('/internal/metrics', include_in_schema=False)
+def metrics(db: Session = db_transaction):
+    from time import monotonic
+    from datetime import timezone
+    from redis.exceptions import RedisError
+    from .infrastructure.metrics import exposition
+
+    lines = exposition()
+    if hasattr(engine.pool, 'checkedout'):
+        lines.append(f'gduf_db_pool_checked_out {engine.pool.checkedout()}')
+    pending, oldest = db.execute(select(func.count(), func.min(CacheInvalidation.created_at))
+                                 .where(CacheInvalidation.completed_at.is_(None))).one()
+    if oldest and oldest.tzinfo is None:
+        oldest = oldest.replace(tzinfo=timezone.utc)
+    lines += [f'gduf_cache_outbox_pending {pending}',
+              f'gduf_cache_outbox_oldest_seconds {(now() - oldest).total_seconds() if oldest else 0}']
+    start = monotonic()
+    try:
+        redis = redis_client()
+        if redis is not None:
+            memory = redis.info('memory')
+            stats = redis.info('stats')
+            clients = redis.info('clients')
+            lines.extend([
+                'gduf_redis_up 1',
+                f'gduf_redis_latency_seconds {monotonic() - start}',
+                f'gduf_redis_used_bytes {memory["used_memory"]}',
+                f'gduf_redis_max_bytes {memory["maxmemory"]}',
+                f'gduf_redis_connected_clients {clients["connected_clients"]}',
+                f'gduf_redis_error_replies_total {stats["total_error_replies"]}',
+                f'gduf_new_login_ready {int(components()["data"]["new_login"])}',
+            ])
+        else:
+            lines.append('gduf_redis_up 0')
+    except RedisError:
+        lines.append('gduf_redis_up 0')
+    return Response('\n'.join(lines) + '\n', media_type='text/plain; version=0.0.4')
+
+@app.post('/api/v1/admin/auth/login', response_model=Data[SessionData], responses={
+    status: {'model': ErrorEnvelope} for status in (401, 403, 429, 503)
+})
+def login(payload: Login, request: Request, response: Response, limiter=Depends(login_limiter), db: Session = db_transaction):
     payload=payload.model_dump()
     if request.headers.get('origin') != os.getenv('PUBLIC_ORIGIN', 'http://localhost:5173'):
         fail('ORIGIN', '请求来源不符', 403)
     ip = login_source(request)
-    attempt = reserve_login(ip)
+    attempt = limiter.reserve(ip)
     admin = db.get(Admin, 1)
     valid = False
     if admin and payload.get('username') == admin.username:
@@ -132,18 +198,13 @@ def login(payload: Login, request: Request, response: Response, db: Session = db
             pass
     if not valid:
         fail('INVALID_LOGIN', '账号或密码错误', 401)
-    with login_lock:
-        attempts = login_attempts.get(ip, [])
-        if attempt in attempts:
-            attempts.remove(attempt)
-            if not attempts:
-                del login_attempts[ip]
+    limiter.refund(attempt)
     token, csrf = secrets.token_urlsafe(48), secrets.token_urlsafe(32)
     db.add(AdminSession(token_hash=digest(token), csrf=csrf, expires_at=now() + timedelta(hours=12)))
     response.set_cookie('session', token, httponly=True, secure=os.getenv('ENV') == 'production', samesite='strict', max_age=43200)
     return {'data': {'username': admin.username, 'csrf': csrf}}
 
-@app.get('/api/v1/admin/auth/me')
+@app.get('/api/v1/admin/auth/me', response_model=Data[SessionData])
 def me(session=Depends(authenticated), db: Session = db_transaction):
     return {'data': {'username': db.get(Admin, 1).username, 'csrf': session.csrf}}
 

@@ -17,18 +17,18 @@ def page_check(x_original_uri: str = Header(default=''), db: Session = db_transa
         if path in ('/', '/competitions', '/announcements', '/results'):
             return Response(status_code=204)
         if re.fullmatch(r'/results/[^/]+', path):
-            from .final_results import public_result
+            from .services.final_result_service import public_result
             public_result(path.split('/')[2], db)
             return Response(status_code=204)
         m = re.fullmatch(r'/(matches|announcements)/([^/]+)', path)
         if m:
-            (public.match if m[1] == 'matches' else public.announcement)(m[2], db)
+            (public.require_match if m[1] == 'matches' else public.require_announcement)(db, m[2])
         else:
             m = re.fullmatch(r'/competitions/([^/]+)(?:/(schedule|standings|teams|rules|announcements|live)(?:/([^/]+))?)?', path)
             if not m or (m[3] and m[2] != 'teams'):
                 return Response(status_code=403)
             if m[3]:
-                public.team(m[1], m[3], db)
+                public.require_team(db, public.public_c(db, m[1]).id, m[3])
             else:
                 public.public_c(db, m[1])
     except HTTPException as exc:

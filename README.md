@@ -4,6 +4,8 @@
 
 当前线上环境、管理员交接、更新发布、证书续期和备份恢复见 [项目交接文档](项目交接文档.md)。正式入口为 <https://www.gdufcs.fun/>；实际服务器使用 Alibaba Cloud Linux 3，下文 Ubuntu 部署为通用方案。
 
+后端质量优化版本的 Redis、迁移、发布、备份和隔离验收步骤见 [后端优化运行与验收手册](开发文档/21_后端优化运行与验收手册.md)。本地如需实际后台登录，请配置 Redis 并运行缓存失效 worker，或用完整 Compose。Redis 首次初始化时，新登录约有五分钟保护期。
+
 ## 2026-11-10 示例数据后端化
 
 **生产发布补充：两项更新及媒体路由修复已于 2026-11-10 上线，当前运行源码为 `6a31f27`。** 生产数据库为 004，四队与新队标已发布，首次悬停已通过公网浏览器验证。实际批次、备份与回退点见 [阿里云发布记录](deploy/两项更新阿里云发布记录_2026-11-10.md)。本节后续涉及“未部署”的叙述为最初源码交付阶段的范围，不覆盖此条发布补充。
@@ -60,7 +62,7 @@ npm run dev
 ## Ubuntu 24.04 部署
 
 1. 安装 Docker Engine 与 Compose，复制 `.env.example` 为 `.env`，设置随机 URL 安全数据库密码和实际 HTTPS `PUBLIC_ORIGIN`。`.env` 不入库。
-2. `docker compose up -d --build`。数据库无宿主机端口；迁移服务成功后 API 启动。
+2. 设置独立的 `REDIS_PASSWORD` 与 `LOGIN_SOURCE_SECRET`，执行 `docker compose up -d --build`。数据库和 Redis 使用容器内部网络；迁移服务成功后 API 启动。
 3. `docker compose exec api python -m app.cli init-admin` 交互创建唯一账号。忘记密码用 `reset-password`，会使旧会话失效。
 4. 使用主机 Nginx/Caddy 将实际域名的 HTTPS 反代到 `127.0.0.1:8080`；证书由实际域名配置。生产 Cookie 为 Secure，需要 HTTPS。
 5. 检查 `/api/v1/health`、管理登录和只读页面。没有服务器和域名配置时，这套配置不代表已经公网部署。

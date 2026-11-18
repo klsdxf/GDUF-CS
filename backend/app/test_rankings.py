@@ -6,7 +6,7 @@ from typing import Literal
 from sqlalchemy import select, delete
 from .db import ResultTestMatch, Registration, RosterSnapshot, Member
 from .security import fail
-from .results import calculate
+from .domain.score_rules import calculate
 
 
 class ScenarioMatch(BaseModel):
@@ -110,7 +110,7 @@ def ranking_items(db,c,p):
 
 
 def match_dto(db,m):
-    from .final_results import public_team
+    from .services.final_result_service import public_team
     teams=[public_team(db,db.get(Registration,getattr(m,side+'_registration_id')),getattr(m,side+'_display_version')) for side in ('a','b')]
     return {'id':m.id,'version':m.version,'label':m.label,'best_of':m.best_of,'teams':teams,'status':'completed',
             'a_team_id':m.a_registration_id,'b_team_id':m.b_registration_id,'winner_team_id':m.winner_registration_id,

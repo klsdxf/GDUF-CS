@@ -14,7 +14,16 @@ def uid():
 class Base(DeclarativeBase):
     pass
 
-engine = create_engine(os.getenv('DATABASE_URL', 'sqlite:///./dev.db'), pool_pre_ping=True)
+database_url = os.getenv('DATABASE_URL', 'sqlite:///./dev.db')
+pool_options = {}
+if database_url.startswith('postgresql'):
+    pool_options = dict(
+        pool_size=int(os.getenv('DB_POOL_SIZE', '5')), max_overflow=0, pool_timeout=2,
+        connect_args={'connect_timeout': 3, 'options': os.getenv(
+            'DB_SESSION_OPTIONS', '-c lock_timeout=2s -c statement_timeout=5s -c idle_in_transaction_session_timeout=15s'
+        )},
+    )
+engine = create_engine(database_url, pool_pre_ping=True, **pool_options)
 if engine.dialect.name == 'sqlite':
     @event.listens_for(engine, 'connect')
     def sqlite_fk(conn, record):
@@ -50,6 +59,7 @@ class Competition(Base):
     is_default: Mapped[bool] = mapped_column(default=False)
     team_limit: Mapped[int] = mapped_column(default=32)
     revision: Mapped[int] = mapped_column(default=0)
+    version: Mapped[int] = mapped_column(default=0, server_default='0')
     focus_match_id: Mapped[str | None]
     data_origin: Mapped[str] = mapped_column(String(16), default='regular', server_default='regular')
     seed_batch_id: Mapped[str | None] = mapped_column(ForeignKey('seed_batches.id'))
@@ -121,6 +131,7 @@ class Stage(Base):
     entries: Mapped[list] = mapped_column(JSON, default=list)
     status: Mapped[str] = mapped_column(default='draft')
     generation_key: Mapped[str | None]
+    version: Mapped[int] = mapped_column(default=0, server_default='0')
 
 class Match(Base):
     __tablename__ = 'matches'
@@ -154,7 +165,12 @@ class Advancement(Base):
     outcome: Mapped[str]
     target: Mapped[str] = mapped_column(ForeignKey('matches.id'))
     slot: Mapped[str]
-    __table_args__ = (UniqueConstraint('target', 'slot'),)
+    competition_id: Mapped[str] = mapped_column(ForeignKey('competitions.id'))
+    __table_args__ = (
+        UniqueConstraint('target', 'slot'),
+        CheckConstraint("outcome IN ('winner','loser')", name='ck_advancement_outcome'),
+        CheckConstraint("slot IN ('a','b')", name='ck_advancement_slot'),
+    )
 
 class Announcement(Base):
     __tablename__ = 'announcements'
@@ -167,6 +183,7 @@ class Announcement(Base):
     publish_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     category_label: Mapped[str] = mapped_column(String(100), default='', server_default='')
     display_order: Mapped[int] = mapped_column(default=0, server_default='0')
+    version: Mapped[int] = mapped_column(default=0, server_default='0')
 
 class LiveStream(Base):
     __tablename__ = 'live_streams'
@@ -176,6 +193,7 @@ class LiveStream(Base):
     room_url: Mapped[str]
     replay_url: Mapped[str] = mapped_column(default='')
     status: Mapped[str] = mapped_column(default='offline')
+    version: Mapped[int] = mapped_column(default=0, server_default='0')
 
 class Audit(Base):
     __tablename__ = 'audit_logs'
@@ -184,10 +202,18 @@ class Audit(Base):
     entity_id: Mapped[str]
     payload: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    actor_id: Mapped[int | None] = mapped_column(default=1)
+    request_id: Mapped[str | None] = mapped_column(String(24))
 
 def db_session():
-    with Session.begin() as session:
-        yield session
+    from .infrastructure.outbox import try_after_commit
+
+    with Session() as session:
+        with session.begin():
+            yield session
+        event_id = session.info.pop('last_public_invalidation', None)
+    if event_id:
+        try_after_commit(event_id)
 
 
 # Commit before sending the response so immediately following requests can see
@@ -302,6 +328,22 @@ for cls, local, target in (
     cls.__table__.append_constraint(ForeignKeyConstraint([local,'competition_id'],[target+'.id',target+'.competition_id']))
 ResultPlacement.__table__.append_constraint(ForeignKeyConstraint(['registration_id','team_display_version'],['roster_snapshots.registration_id','roster_snapshots.version']))
 
+for cls, column, table in (
+    (Match, 'stage_id', 'stages'), (Match, 'a', 'registrations'), (Match, 'b', 'registrations'),
+    (Match, 'winner', 'registrations'), (Claim, 'registration_id', 'registrations'),
+    (LiveStream, 'match_id', 'matches'), (Advancement, 'source', 'matches'),
+    (Advancement, 'target', 'matches'),
+):
+    cls.__table__.append_constraint(ForeignKeyConstraint(
+        [column, 'competition_id'], [f'{table}.id', f'{table}.competition_id'],
+        name=f'fk_{cls.__tablename__}_{column}_edition'))
+Match.__table__.append_constraint(CheckConstraint(
+    'winner IS NULL OR (a IS NOT NULL AND winner = a) OR (b IS NOT NULL AND winner = b)',
+    name='ck_match_winner'))
+Match.__table__.append_constraint(CheckConstraint(
+    'NOT confirmed OR (a IS NOT NULL AND b IS NOT NULL AND winner IS NOT NULL)',
+    name='ck_match_confirmed_sides'))
+
 ResultRelease.__table__.append_constraint(UniqueConstraint('id','result_page_id'))
 ResultPage.__table__.append_constraint(ForeignKeyConstraint(['current_release_id','id'],['result_releases.id','result_releases.result_page_id'],name='fk_release_belongs_to_page',use_alter=True))
 
@@ -376,3 +418,41 @@ for field in ('a_registration_id','b_registration_id','winner_registration_id'):
 for side in ('a','b'):
     ResultTestMatch.__table__.append_constraint(ForeignKeyConstraint([side+'_registration_id',side+'_display_version'],['roster_snapshots.registration_id','roster_snapshots.version']))
 Index('uq_test_final',ResultTestMatch.result_page_id,unique=True,sqlite_where=ResultTestMatch.match_kind=='final',postgresql_where=ResultTestMatch.match_kind=='final')
+
+
+class OperationReceipt(Base):
+    __tablename__ = 'operation_receipts'
+    actor_id: Mapped[int] = mapped_column(primary_key=True, default=1)
+    action: Mapped[str] = mapped_column(String(40), primary_key=True)
+    resource_id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    key_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    request_hash: Mapped[str] = mapped_column(String(64))
+    response_status: Mapped[int] = mapped_column(default=200)
+    response_body: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class CacheInvalidation(Base):
+    __tablename__ = 'cache_invalidation_events'
+    id: Mapped[str] = mapped_column(primary_key=True, default=uid)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    retry_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    attempts: Mapped[int] = mapped_column(default=0)
+    last_error: Mapped[str | None] = mapped_column(String(64))
+
+
+class RedisRuntimeState(Base):
+    __tablename__ = 'redis_runtime_state'
+    id: Mapped[int] = mapped_column(primary_key=True, default=1)
+    run_id: Mapped[str | None] = mapped_column(String(64))
+    epoch: Mapped[str | None] = mapped_column(String(64))
+    login_blocked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+Index('ix_cache_outbox_pending', CacheInvalidation.retry_at, CacheInvalidation.id,
+      postgresql_where=CacheInvalidation.completed_at.is_(None),
+      sqlite_where=CacheInvalidation.completed_at.is_(None))
+Index('ix_audit_created_id', Audit.created_at.desc(), Audit.id.desc())
+Index('ix_advancement_source', Advancement.source)

@@ -2,7 +2,7 @@
 import {ref,computed,watch,nextTick,onMounted,onUnmounted} from 'vue'
 import {useRoute,useRouter} from 'vue-router'
 import {api} from './api'
-import {render,score,teamName,awards,type ResultDTO} from './results/render'
+import {render,pendingResultData,score,teamName,awardDetails,awardPositions,type PendingResult,type ResultDTO} from './results/render'
 import {partnerDetails,resultPartners} from './results/partners'
 import {escape as e,updatePageMeta,liveUrl} from './redesign/presentation'
 import './results/reference-v6.css'
@@ -14,23 +14,29 @@ const props=defineProps<{previewData?:ResultDTO}>()
 const emit=defineEmits<{competition:[value:any]}>()
 const route=useRoute(),router=useRouter(),root=ref<HTMLElement>(),dialog=ref<HTMLDialogElement>()
 const data=ref<ResultDTO|null>(null),loading=ref(true),error=ref(''),missing=ref(false),selected=ref(0),query=ref(''),title=ref(''),body=ref('')
+const pendingResult=ref<PendingResult|null>(null)
+const displayResult=computed(()=>pendingResult.value?pendingResultData(pendingResult.value):data.value)
+const hasPublishedResults=computed(()=>data.value!==null)
 const demo=!props.previewData&&(import.meta.env.VITE_PUBLIC_DATA_MODE||'api')==='demo'
-const html=computed(()=>data.value?render(data.value,selected.value,{visualVariant:'v6',context:demo?'reference':props.previewData?'admin-preview':'public'}):'')
+const html=computed(()=>displayResult.value?render(displayResult.value,selected.value,{visualVariant:'v6',context:demo?'reference':props.previewData?'admin-preview':'public'}):'')
 let sequence=0,opener:HTMLElement|null=null,dispose=()=>{}
 let syncSequence=0,unmounted=false
 let revealedPartnerRelease:string|undefined
 async function load(background=false){const id=++sequence
- if(!background){loading.value=true;error.value='';missing.value=false;data.value=null}
+ if(!background){loading.value=true;error.value='';missing.value=false;data.value=null;pendingResult.value=null}
  try{if(props.previewData)data.value=props.previewData
  else if(import.meta.env.VITE_PUBLIC_DATA_MODE==='demo'&&demo){if(route.params.pathMatch&&route.path!=='/results'&&route.path!=='/results/autumn')throw Object.assign(new Error('结果不存在'),{status:404});data.value=(await import('./results/demo-data')).demoData()}
  else {const slug=route.path.split('/')[2];const d=await api(slug?'/competitions/'+encodeURIComponent(slug)+'/results':'/results/latest');if(id!==sequence)return
   if(background&&d?.release?.id&&d.release.id===data.value?.release?.id)return
-  data.value=d;error.value='';missing.value=false
+  const pending=d?.pending?d:null
+  if(!background||JSON.stringify(pending)!==JSON.stringify(pendingResult.value))pendingResult.value=pending
+  data.value=d?.pending?null:d;error.value='';missing.value=false
  }
- emit('competition',data.value?.competition||null)
- updatePageMeta(route.path,false,'最终排名'+(data.value?' · '+data.value.competition.name:''))
- }catch(err:any){if(id!==sequence)return;if(background&&data.value&&err.status!==404)return
-  data.value=null;missing.value=err.status===404;error.value=missing.value?'内容不存在或尚未公开':err.message;updatePageMeta(route.path,missing.value,missing.value?'':'服务暂不可用')}finally{if(id===sequence)loading.value=false}
+ const competition=displayResult.value?.competition||null
+ emit('competition',competition)
+ updatePageMeta(route.path,false,'最终排名'+(competition?' · '+competition.name:''))
+ }catch(err:any){if(id!==sequence)return;if(background&&displayResult.value&&err.status!==404)return
+  data.value=null;pendingResult.value=null;missing.value=err.status===404;error.value=missing.value?'内容不存在或尚未公开':err.message;updatePageMeta(route.path,missing.value,missing.value?'':'服务暂不可用')}finally{if(id===sequence)loading.value=false}
 }
 watch(()=>route.fullPath,()=>{if(route.query.edition){router.replace('/results/'+encodeURIComponent(String(route.query.edition)));return}selected.value=0;query.value='';revealedPartnerRelease=undefined;load()},{immediate:true})
 watch(()=>props.previewData,()=>load())
@@ -40,7 +46,7 @@ function animate(){dispose();dispose=()=>{};const el=root.value;if(!el)return;co
  hero.addEventListener('pointermove',move,{passive:true});scene.addEventListener('pointerleave',leave)
  const partnerGrid=el.querySelector('.results-partners-grid')
  const firstPartner=partnerGrid?.firstElementChild
- const releaseKey=String(data.value?.release?.id||data.value?.competition.id||'preview')
+ const releaseKey=String(data.value?.release?.id||displayResult.value?.competition.id||'preview')
  const observer=new IntersectionObserver(entries=>entries.forEach(entry=>{
   if(!entry.isIntersecting)return
   if(entry.target===firstPartner){revealedPartnerRelease=releaseKey;partnerGrid?.classList.add('results-partners-enter')}
@@ -60,17 +66,17 @@ watch(html,syncResultDOM)
 async function open(t:string,b:string,source?:HTMLElement){title.value=t;body.value=b;opener=source||document.activeElement as HTMLElement;await nextTick();dialog.value?.showModal()}
 function close(){dialog.value?.close();opener?.focus()}
 async function replay(){if(!data.value)return;const rows=demo?[]:await api('/competitions/'+encodeURIComponent(data.value.competition.slug)+'/live');await open('赛事回顾',rows.filter((r:any)=>liveUrl(r.replay_url)).map((r:any)=>`<p><a href="${e(liveUrl(r.replay_url))}" target="_blank" rel="noopener">观看回放 ↗</a></p>`).join('')||'<h2>精彩，留给回放。</h2><p>本届暂无已发布回放。</p>')}
-function click(ev:MouseEvent){const b=(ev.target as HTMLElement).closest<HTMLElement>('button');if(!b||!data.value)return;const d=data.value
+function click(ev:MouseEvent){const b=(ev.target as HTMLElement).closest<HTMLElement>('button');if(!b||!displayResult.value)return;const d=displayResult.value
  if(b.dataset.award!==undefined){selected.value=Number(b.dataset.award);nextTick(()=>root.value?.querySelector<HTMLElement>('#award-tab-'+selected.value)?.focus())}
  if(b.dataset.match){const m=[d.final_match,...d.champion_path].find(m=>m.id===b.dataset.match);open(m.label||'决赛逐图赛果',`<h2>${e(teamName(d,m.a_team_id))} <span class="modal-score">${e(score(m))}</span> ${e(teamName(d,m.b_team_id))}</h2><p>BO${m.best_of}${demo?' · 赛后示例':''}</p>`+(m.maps||[]).map((x:any)=>`<div class="map-detail"><span>${e(x.map_name)}</span><b>${x.score_a} : ${x.score_b}</b></div>`).join('')+(!m.maps?.length?'<p>暂无逐图成绩</p>':'')+(!demo&&m.detail_url?`<p><a href="${e(m.detail_url)}">打开比赛详情 ↗</a></p>`:''),b)}
- if(b.dataset.prize){const p=d.placements.find(p=>p.id===b.dataset.prize);open('奖品详情',`<h2>${e(p.team.name)}</h2>`+awards(d,p).map(({z,a})=>`<p>${e(z.name)} × ${a.quantity} ${e(z.unit)}<br>${e(z.description||'')}</p>`).join(''),b)}
+ if(b.dataset.prize){const p=d.placements.find(p=>p.id===b.dataset.prize);if(p)open('奖品详情',awardDetails(d,p),b)}
  if(b.dataset.partner){const partner=resultPartners(d).find(p=>p.id===b.dataset.partner);const details=partner&&partnerDetails(partner);if(details)open(details.title,details.body,b)}
  if(b.dataset.dialog==='partner'&&d.presenting_partner){const p=d.presenting_partner;open('合作支持详情',`<h2>${e(p.name)} ${e(p.english_name)}</h2><p>${e(p.introduction||p.description||p.support_description)}</p>`+(p.official_url?`<a href="${e(p.official_url)}" target="_blank" rel="noopener">品牌官网 ↗</a>`:''),b)}
 }
 function keys(ev:KeyboardEvent){const t=ev.target as HTMLElement;if(!t.matches('[data-award]'))return;const tabs=Array.from(root.value!.querySelectorAll<HTMLElement>('[data-award]'));let i=tabs.indexOf(t);if(ev.key==='Home')i=0;else if(ev.key==='End')i=tabs.length-1;else if(ev.key==='ArrowLeft')i=(i+tabs.length-1)%tabs.length;else if(ev.key==='ArrowRight')i=(i+1)%tabs.length;else return;ev.preventDefault();ev.stopPropagation();tabs[i]?.click()}
 async function download(){if(!data.value)return;const d=data.value
  // Build solely from the public DTO, never clone the app, cookies or administration DOM.
- const variants=d.placements.filter(p=>p.rank_from<=3).map((_,i)=>render(d,i,{visualVariant:'v6',context:demo?'reference':'offline'}));let styles=css+'\n'+partnerCss
+ const variants=awardPositions(d).map((_,i)=>render(d,i,{visualVariant:'v6',context:demo?'reference':'offline'}));let styles=css+'\n'+partnerCss
  styles+='\n'+await (await fetch('/redesign/assets/fonts.css')).text()
  const urls=[...new Set(Array.from(styles.matchAll(/url\(['"]?([^)'"\s]+)['"]?\)/g),m=>m[1]!))]
  const partnerLogos=new Set(resultPartners(d).map(p=>p.logo_url))
@@ -88,7 +94,7 @@ async function download(){if(!data.value)return;const d=data.value
  for(let i=0;i<variants.length;i++)for(const u of [...new Set(Array.from(variants[i]!.matchAll(/(?:src|href)="(\/media\/[^\"]+)"/g),m=>m[1]!))])variants[i]=variants[i]!.replaceAll(u,await toData(u))
  const info:Record<string,{title:string;body:string}>={}
  for(const m of [d.final_match,...d.champion_path])info['match:'+m.id]={title:m.label||'决赛逐图赛果',body:`<h2>${e(teamName(d,m.a_team_id))} ${e(score(m))} ${e(teamName(d,m.b_team_id))}</h2>`+(m.maps||[]).map((x:any)=>`<div class="map-detail"><span>${e(x.map_name)}</span><b>${x.score_a} : ${x.score_b}</b></div>`).join('')}
- for(const p of d.placements)info['prize:'+p.id]={title:'奖品详情',body:`<h2>${e(p.team.name)}</h2>`+awards(d,p).map(({z,a})=>`<p>${e(z.name)} × ${a.quantity} ${e(z.unit)}<br>${e(z.description)}</p>`).join('')}
+ for(const p of d.placements)info['prize:'+p.id]={title:'奖品详情',body:awardDetails(d,p)}
  if(demo)info.partner={title:'合作支持详情',body:`<h2>${e(d.presenting_partner?.name)}</h2><p>${e(d.presenting_partner?.introduction||d.presenting_partner?.description||d.presenting_partner?.support_description)}</p>`}
  else for(const partner of resultPartners(d)){const details=partnerDetails(partner);if(details)info['partner:'+partner.id]=details}
  const encode=(v:any)=>JSON.stringify(v).replaceAll('<','\\u003c')
@@ -99,7 +105,7 @@ async function download(){if(!data.value)return;const d=data.value
  const contents='<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>'+e(d.competition.name)+' 最终排名</title><style>'+styles+'</style><body style="margin:0"><div class="public-site results-page v5-motion-on">'+header+'<main>'+variants[0]+'</main>'+(footer?.outerHTML||'')+'<dialog aria-labelledby="offline-dialog-title"><div class="dialog-top"><span id="offline-dialog-title" data-title></span><button data-close aria-label="关闭弹窗">×</button></div><div data-body></div></dialog></div><script>'+js+'<'+ '/script></body></html>'
  const url=URL.createObjectURL(new Blob([contents],{type:'text/html;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='GDUFCS-results-'+d.competition.slug+'.html';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)
 }
-defineExpose({replay,download})
+defineExpose({replay,download,hasPublishedResults})
 const timer=setInterval(()=>{if(!demo&&!props.previewData&&!document.hidden&&!loading.value)load(true)},30000)
 onUnmounted(()=>{unmounted=true;syncSequence++;sequence++;dispose();dispose=()=>{};clearInterval(timer)})
 </script>
@@ -107,7 +113,7 @@ onUnmounted(()=>{unmounted=true;syncSequence++;sequence++;dispose();dispose=()=>
 <div ref="root" @error.capture="logoError" @click="click" @keydown="keys" @input="query=($event.target as HTMLInputElement).value;filter()">
  <div v-if="loading" class="results-loading empty-state" role="status">正在加载最终排名…</div>
  <div v-else-if="error" class="empty-state" role="alert"><h1>{{missing?'页面不存在':'服务暂不可用'}}</h1><p>{{error}}</p><button v-if="!missing" class="btn" @click="load()">重试</button></div>
- <div v-else-if="!data" class="empty-state"><h1>最终排名待公布</h1></div>
+ <div v-else-if="!displayResult" class="empty-state"><h1>最终排名待公布</h1></div>
  <div v-else v-html="html"></div>
 </div>
 <dialog ref="dialog" id="result-dialog" aria-labelledby="result-dialog-title" @cancel.prevent="close" @close="opener?.focus()" @click="(ev:any)=>{if(ev.target===dialog){const r=dialog!.getBoundingClientRect();if(ev.clientX<r.left||ev.clientX>r.right||ev.clientY<r.top||ev.clientY>r.bottom)close()}}"><div class="dialog-top"><span id="result-dialog-title">{{title}}</span><button aria-label="关闭弹窗" @click="close">×</button></div><div v-html="body"></div></dialog>

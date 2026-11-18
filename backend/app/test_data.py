@@ -9,7 +9,9 @@ from sqlalchemy.orm import Session
 from .db import *
 from .security import authenticated, fail
 from .roster import serialize, save_roster
-from . import roster, tournaments, results, final_results as fr, test_rankings
+from . import test_rankings
+from .services import roster_service as roster, final_result_service as fr
+from .services import schedule_service as tournaments, result_service as results
 
 router=APIRouter(prefix='/api/v1/admin/test-data-imports',dependencies=[Depends(authenticated)])
 
@@ -72,14 +74,14 @@ def import_package(db,data,sha,idempotency_key):
         for index,member in enumerate(db.scalars(select(Member).where(Member.registration_id==t.id,Member.version==t.version))):track('member',item['source_key']+'-'+str(index),member)
     # Reuse the exact schedule and result services in this same DB transaction.
     for key,comp in comps.items():
-        roster.publish_competition(comp.id,db)
+        roster.apply_competition_publication(comp.id,db)
         comp.status=next(x['status'] for x in data['competitions'] if x['source_key']==key)
     if not db.scalar(select(Competition.id).where(Competition.is_default==True)):
         c.is_default=True
     stage_id=tournaments.create_stage({'competition_id':c.id,'name':'小组赛与决赛','type':'group_single','config':{'best_of':3,'groups':1,'qualify':2}},db)['data']['id']
     tournaments.entries(stage_id,{'entries':[t.id for t in teams.values()]},db)
-    tournaments.generate(stage_id,{'idempotency_key':batch.id},db)
-    tournaments.publish(stage_id,db)
+    tournaments.generate_schedule(db,stage_id,{'idempotency_key':batch.id})
+    tournaments.publish_schedule(db,stage_id)
     track('stage','autumn-group-final',db.get(Stage,stage_id))
     for m in db.scalars(select(Match).where(Match.stage_id==stage_id,Match.group=='')):
         m.best_of=5
@@ -93,7 +95,7 @@ def import_package(db,data,sha,idempotency_key):
         tournaments.arrange(m.id,{'scheduled_at':item['scheduled_at'],'status':'scheduled'},db)
         if item['maps']:
             results.save_result(m.id,{'expected_version':m.version,'maps':item['maps']},db)
-            results.confirm(m.id,{'expected_version':m.version},db)
+            results.confirm_result(db,m.id,{'expected_version':m.version})
         if item['a']=='pp' and item['b']=='fs':c.focus_match_id=m.id
         track('match',item['source_key'],m)
     p=ResultPage(competition_id=c.id,result_kind='test',config={'ranking_method':'manual','seal_mode':'monogram','display_meta':{'edition_label':'2026 秋季赛','seal_edition_label':'FALL 2026','seal_serial':'001'}})
@@ -126,7 +128,7 @@ def import_package(db,data,sha,idempotency_key):
     for m in test_rankings.matches(db,p):track('test_match',m.source_key,m)
     check=fr.validate(db,c,p)
     if check['blocking_errors']:fail('PUBLISH_INCOMPLETE','初始化数据未通过发布校验',422,check['blocking_errors'])
-    released=fr.publish(c.id,fr.ResultPublishWrite(expected_version=p.version,expected_source_fingerprint=check['source_fingerprint'],reason='初始化四队测试排名'),batch.id,db)
+    released=fr.publish_result(db,c.id,{'expected_version':p.version,'expected_source_fingerprint':check['source_fingerprint'],'reason':'初始化四队测试排名'},batch.id)
     track('release','autumn-v1',db.get(ResultRelease,released['data']['id']))
     for r in fr.placements(db,p):track('placement',str(r.rank_from),r)
     track('result_page','autumn',p)

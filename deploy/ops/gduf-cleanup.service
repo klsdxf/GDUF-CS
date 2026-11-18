@@ -1,0 +1,8 @@
+[Unit]
+Description=Remove expired GDUF CS sessions and drafts
+OnFailure=gduf-operation-failure@%n.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/gduf-cs
+ExecStart=/usr/bin/docker compose exec -T api python -m app.jobs.cleanup

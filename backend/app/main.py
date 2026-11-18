@@ -106,7 +106,7 @@ async def integrity_error(request, exc):
 @app.middleware('http')
 async def private_headers(request, call_next):
     response = await call_next(request)
-    if '/admin/' in request.url.path or '/results' in request.url.path:
+    if '/admin/' in request.url.path or '/results' in request.url.path or request.url.path == '/api/v1/visits':
         response.headers['Cache-Control'] = 'no-store'
     response.headers['X-Content-Type-Options'] = 'nosniff'
     return response
@@ -153,8 +153,8 @@ def logout(response: Response, session=Depends(authenticated), db: Session = db_
     response.delete_cookie('session')
     return {'data': True}
 
-from . import roster, tournaments, results, public, content, page_checks, final_results, test_data
-for module in (roster, tournaments, results, public, content, page_checks, final_results, test_data):
+from . import roster, tournaments, results, public, content, page_checks, final_results, test_data, visits
+for module in (roster, tournaments, results, public, content, page_checks, final_results, test_data, visits):
     app.include_router(module.router)
 
 from pathlib import Path

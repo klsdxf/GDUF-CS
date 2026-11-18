@@ -41,9 +41,10 @@ def test_migrate_and_preserve_legacy_data(tmp_path,legacy):
     result=subprocess.run([sys.executable,'-m','alembic','upgrade','head'],cwd=Path(__file__).parents[1],env=env,capture_output=True,text=True)
     assert result.returncode==0,result.stdout+result.stderr
     with sqlite3.connect(path) as db:
-        assert db.execute('SELECT version_num FROM alembic_version').fetchone()[0]=='006'
+        assert db.execute('SELECT version_num FROM alembic_version').fetchone()[0]=='visit_stats_001'
         tables={r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         assert {'result_test_matches','seed_batches','seed_entities','seed_previews'}<=tables
+        assert {'visit_visitor_days', 'visit_daily_totals'} <= tables
         assert db.execute('PRAGMA foreign_key_check').fetchall()==[]
         if legacy:
             assert db.execute("SELECT data_origin,seed_batch_id,name FROM competitions WHERE id='old'").fetchone()==('regular',None,'Existing cup')

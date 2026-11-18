@@ -29,6 +29,7 @@ services:
     environment:
       <<: *api_env
       LOGIN_TRUSTED_PROXIES: ${LOGIN_TRUSTED_PROXIES:-web,edge}
+      VISIT_STATS_START_DATE: ${VISIT_STATS_START_DATE:-}
     volumes: [media:/app/storage/media]
     depends_on:
       migrate: {condition: service_completed_successfully}

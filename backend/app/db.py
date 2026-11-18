@@ -1,8 +1,8 @@
 import os
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from uuid import uuid4
 from fastapi import Depends
-from sqlalchemy import create_engine, event, String, DateTime, JSON, ForeignKey, UniqueConstraint, CheckConstraint, ForeignKeyConstraint, Index
+from sqlalchemy import BigInteger, Date, create_engine, event, String, DateTime, JSON, ForeignKey, UniqueConstraint, CheckConstraint, ForeignKeyConstraint, Index
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 def now():
@@ -376,3 +376,20 @@ for field in ('a_registration_id','b_registration_id','winner_registration_id'):
 for side in ('a','b'):
     ResultTestMatch.__table__.append_constraint(ForeignKeyConstraint([side+'_registration_id',side+'_display_version'],['roster_snapshots.registration_id','roster_snapshots.version']))
 Index('uq_test_final',ResultTestMatch.result_page_id,unique=True,sqlite_where=ResultTestMatch.match_kind=='final',postgresql_where=ResultTestMatch.match_kind=='final')
+
+
+class VisitVisitorDay(Base):
+    __tablename__ = 'visit_visitor_days'
+    stat_date: Mapped[date] = mapped_column(Date, primary_key=True)
+    visitor_digest: Mapped[str] = mapped_column(String(64), primary_key=True)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
+class VisitDailyTotal(Base):
+    __tablename__ = 'visit_daily_totals'
+    stat_date: Mapped[date] = mapped_column(Date, primary_key=True)
+    uv: Mapped[int] = mapped_column(BigInteger, server_default='0')
+    pv: Mapped[int] = mapped_column(BigInteger, server_default='0')
+    __table_args__ = (
+        CheckConstraint('uv >= 0 AND pv >= 0', name='ck_visit_daily_totals_nonnegative'),
+    )

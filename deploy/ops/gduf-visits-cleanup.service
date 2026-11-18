@@ -1,0 +1,8 @@
+[Unit]
+Description=Prune short-lived GDUF CS visit activity
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/gduf-cs
+ExecStart=/usr/bin/docker compose exec -T api python -m app.visits_cleanup

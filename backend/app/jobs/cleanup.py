@@ -4,6 +4,7 @@ from datetime import timedelta
 from sqlalchemy import delete, update
 
 from ..db import AdminSession, CacheInvalidation, ImportBatch, OperationReceipt, SeedPreview, Session, now
+from ..visits import prune_activity
 
 
 def cleanup():
@@ -14,6 +15,7 @@ def cleanup():
         db.execute(update(ImportBatch).where(ImportBatch.expires_at < stamp, ImportBatch.status == 'preview')
                    .values(status='expired', payload={}))
         db.execute(delete(CacheInvalidation).where(CacheInvalidation.completed_at < stamp - timedelta(days=7)))
+        prune_activity(db, stamp)
 
 
 if __name__ == '__main__':

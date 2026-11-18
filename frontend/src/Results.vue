@@ -11,7 +11,7 @@ import './results/partners.css'
 import partnerCss from './results/partners.css?raw'
 import {offlineRuntime} from './results/offline'
 const props=defineProps<{previewData?:ResultDTO}>()
-const emit=defineEmits<{competition:[value:any]}>()
+const emit=defineEmits<{competition:[value:any];visitReady:[path:string];visitUnavailable:[path:string]}>()
 const route=useRoute(),router=useRouter(),root=ref<HTMLElement>(),dialog=ref<HTMLDialogElement>()
 const data=ref<ResultDTO|null>(null),loading=ref(true),error=ref(''),missing=ref(false),selected=ref(0),query=ref(''),title=ref(''),body=ref('')
 const pendingResult=ref<PendingResult|null>(null)
@@ -22,7 +22,7 @@ const html=computed(()=>displayResult.value?render(displayResult.value,selected.
 let sequence=0,opener:HTMLElement|null=null,dispose=()=>{}
 let syncSequence=0,unmounted=false
 let revealedPartnerRelease:string|undefined
-async function load(background=false){const id=++sequence
+async function load(background=false){const id=++sequence,path=route.path
  if(!background){loading.value=true;error.value='';missing.value=false;data.value=null;pendingResult.value=null}
  try{if(props.previewData)data.value=props.previewData
  else if(import.meta.env.VITE_PUBLIC_DATA_MODE==='demo'&&demo){if(route.params.pathMatch&&route.path!=='/results'&&route.path!=='/results/autumn')throw Object.assign(new Error('结果不存在'),{status:404});data.value=(await import('./results/demo-data')).demoData()}
@@ -36,7 +36,14 @@ async function load(background=false){const id=++sequence
  emit('competition',competition)
  updatePageMeta(route.path,false,'最终排名'+(competition?' · '+competition.name:''))
  }catch(err:any){if(id!==sequence)return;if(background&&displayResult.value&&err.status!==404)return
-  data.value=null;pendingResult.value=null;missing.value=err.status===404;error.value=missing.value?'内容不存在或尚未公开':err.message;updatePageMeta(route.path,missing.value,missing.value?'':'服务暂不可用')}finally{if(id===sequence)loading.value=false}
+  data.value=null;pendingResult.value=null;missing.value=err.status===404;error.value=missing.value?'内容不存在或尚未公开':err.message;updatePageMeta(route.path,missing.value,missing.value?'':'服务暂不可用')
+  if(!demo&&!props.previewData)emit('visitUnavailable',path)
+  return
+ }finally{if(id===sequence)loading.value=false}
+ if(!background&&!demo&&!props.previewData){
+  await nextTick()
+  if(id===sequence&&route.path===path)emit('visitReady',path)
+ }
 }
 watch(()=>route.fullPath,()=>{if(route.query.edition){router.replace('/results/'+encodeURIComponent(String(route.query.edition)));return}selected.value=0;query.value='';revealedPartnerRelease=undefined;load()},{immediate:true})
 watch(()=>props.previewData,()=>load())

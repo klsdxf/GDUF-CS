@@ -32,7 +32,8 @@ class RequestContext:
                 headers = MutableHeaders(scope=message)
                 headers['X-Request-ID'] = identifier
                 headers['X-Content-Type-Options'] = 'nosniff'
-                if '/admin/' in scope['path'] or '/results' in scope['path']:
+                path = scope['path']
+                if '/admin/' in path or '/results' in path or path == '/api/v1/visits':
                     headers['Cache-Control'] = 'no-store'
                 status = message['status']
                 sent = True

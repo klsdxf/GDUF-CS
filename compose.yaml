@@ -53,6 +53,7 @@ services:
       LOGIN_SOURCE_SECRET: ${LOGIN_SOURCE_SECRET:?set LOGIN_SOURCE_SECRET}
       LOGIN_TRUSTED_PROXIES: ${LOGIN_TRUSTED_PROXIES:-web}
       RES_OPTIONS: attempts:1 timeout:1
+      VISIT_STATS_START_DATE: ${VISIT_STATS_START_DATE:-}
     volumes: [media:/app/storage/media]
     depends_on:
       migrate: {condition: service_completed_successfully}

@@ -41,9 +41,10 @@ def test_migrate_and_preserve_legacy_data(tmp_path,legacy):
     result=subprocess.run([sys.executable,'-m','alembic','upgrade','head'],cwd=Path(__file__).parents[1],env=env,capture_output=True,text=True,timeout=45)
     assert result.returncode==0,result.stdout+result.stderr
     with sqlite3.connect(path) as db:
-        assert db.execute('SELECT version_num FROM alembic_version').fetchone()[0]=='008'
+        assert db.execute('SELECT version_num FROM alembic_version').fetchone()[0]=='009'
         tables={r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         assert {'result_test_matches','seed_batches','seed_entities','seed_previews'}<=tables
+        assert {'visit_visitor_days', 'visit_daily_totals'} <= tables
         assert db.execute('PRAGMA foreign_key_check').fetchall()==[]
         if legacy:
             assert db.execute("SELECT data_origin,seed_batch_id,name FROM competitions WHERE id='old'").fetchone()==('regular',None,'Existing cup')
@@ -55,3 +56,19 @@ def test_migrate_and_preserve_legacy_data(tmp_path,legacy):
             db.execute("UPDATE prizes SET provider_partner_id=NULL WHERE id='prize'")
             assert db.execute("SELECT prize_id,quantity FROM prize_allocations WHERE id='allocation'").fetchone()==('prize',5)
             assert db.execute('PRAGMA foreign_key_check').fetchall()==[]
+
+
+@pytest.mark.parametrize('prior_head', ['008', 'visit_stats_001'])
+def test_merge_existing_release_heads(tmp_path, prior_head):
+    path = tmp_path / 'merge.db'
+    env = {**os.environ, 'DATABASE_URL': 'sqlite:///' + path.as_posix()}
+    workdir = Path(__file__).parents[1]
+    for target in [prior_head, 'head']:
+        result = subprocess.run(
+            [sys.executable, '-m', 'alembic', 'upgrade', target],
+            cwd=workdir, env=env, capture_output=True, text=True, timeout=45,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+    with sqlite3.connect(path) as db:
+        assert db.execute('SELECT version_num FROM alembic_version').fetchall() == [('009',)]
+        assert db.execute('SELECT COUNT(*) FROM visit_daily_totals').fetchone() == (0,)

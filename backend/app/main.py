@@ -98,7 +98,6 @@ async def validation_error(request, exc):
 async def integrity_error(request, exc):
     return error_response(409, 'CONFLICT', '数据冲突，请刷新后重试')
 
-
 @app.exception_handler(OperationalError)
 @app.exception_handler(PoolTimeout)
 async def database_error(request, exc):
@@ -214,8 +213,8 @@ def logout(response: Response, session=Depends(authenticated), db: Session = db_
     response.delete_cookie('session')
     return {'data': True}
 
-from . import roster, tournaments, results, public, content, page_checks, final_results, test_data
-for module in (roster, tournaments, results, public, content, page_checks, final_results, test_data):
+from . import roster, tournaments, results, public, content, page_checks, final_results, test_data, visits
+for module in (roster, tournaments, results, public, content, page_checks, final_results, test_data, visits):
     app.include_router(module.router)
 
 from pathlib import Path

@@ -1,0 +1,88 @@
+.public-site.results-page .rank-mobile-label { display: none; }
+
+.public-site.results-page .v5-seal-scene {
+  touch-action: pan-y pinch-zoom;
+  user-select: none;
+}
+
+.public-site.results-page.v5-motion-on .v5-seal-scene[data-seal-dragging] .v5-seal-object {
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-site.results-page.v5-motion-on .v5-seal-scene .v5-seal-object {
+    transition: none !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .public-site.results-page .v5-toolbar { padding-block: 14px; }
+  .public-site.results-page .v5-seal-object {
+    transform: rotateX(var(--seal-rx, 7deg)) rotateY(var(--seal-ry, -10deg)) rotateZ(-8deg);
+  }
+
+  .public-site.results-page .results-pending .v4-type { padding: 16px 6% 0; }
+  .public-site.results-page .results-pending .v4-champ-meta { margin-top: 5px; font-size: 13px; gap: 0; }
+  .public-site.results-page .results-pending .v5-seal-scene { width: min(100%, 244px); }
+  .public-site.results-page .results-pending .v4-type h3,
+  .public-site.results-page .results-pending .v4-champ-meta > span:nth-child(2),
+  .public-site.results-page .results-pending .v4-win-bottom,
+  .public-site.results-page .results-pending .v4-runners,
+  .public-site.results-page .results-pending .v4-road { display: none; }
+
+  .public-site.results-page .rank-controls { flex-wrap: wrap; gap: 8px; }
+  .public-site.results-page .rank-search,
+  .public-site.results-page .rank-search input { max-width: 100%; min-width: 0; }
+  .public-site.results-page .rank-search input { min-height: 44px; font-size: 16px; }
+  .public-site.results-page .rank-scroll { overflow: visible; }
+  .public-site.results-page .results-table { display: block; }
+  .public-site.results-page .results-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .public-site.results-page .results-table tbody { display: grid; gap: 8px; }
+  .public-site.results-page .results-table tbody tr {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: 6px 10px;
+    align-items: center;
+    padding: 10px 12px;
+    border: 1px solid #303d4c;
+  }
+  .public-site.results-page .results-table tbody tr[hidden] { display: none; }
+  .public-site.results-page .results-table td {
+    display: block;
+    min-width: 0;
+    width: auto;
+    padding: 0;
+    border: 0;
+    overflow-wrap: anywhere;
+  }
+  .public-site.results-page .results-table td:first-child,
+  .public-site.results-page .results-table td:nth-child(3),
+  .public-site.results-page .results-table td:nth-child(4) { min-width: 0; width: auto; }
+  .public-site.results-page .results-table .table-identity { min-width: 0; gap: 8px; }
+  .public-site.results-page .table-identity > div { min-width: 0; }
+  .public-site.results-page .results-table a.table-identity { min-height: 44px; }
+  .public-site.results-page .results-table td:nth-child(3),
+  .public-site.results-page .results-table td:nth-child(4) {
+    grid-column: 2;
+    color: #c2cbd6;
+    font: 400 13px/1.45 var(--text);
+    text-align: start;
+    letter-spacing: 0;
+  }
+  .public-site.results-page .rank-mobile-label {
+    display: block;
+    color: #9cabbc;
+    font-size: 11px;
+  }
+  .public-site.results-page .v4-win-bottom button,
+  .public-site.results-page .v4-prize-tabs button,
+  .public-site.results-page .v4-detail-btn { min-height: 44px; }
+  .public-site.results-page .v4-prize-tabs button { min-width: 44px; }
+  .public-site.results-page .v4-prize-tabs { gap: 4px; flex-wrap: wrap; }
+}

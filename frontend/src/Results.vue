@@ -9,6 +9,9 @@ import './results/reference-v6.css'
 import css from './results/reference-v6.css?raw'
 import './results/partners.css'
 import partnerCss from './results/partners.css?raw'
+import {bindSealMotion} from './results/seal-motion'
+import './results/mobile.css'
+import mobileCss from './results/mobile.css?raw'
 import {offlineRuntime} from './results/offline'
 const props=defineProps<{previewData?:ResultDTO}>()
 const emit=defineEmits<{competition:[value:any];visitReady:[path:string];visitUnavailable:[path:string]}>()
@@ -49,8 +52,7 @@ watch(()=>route.fullPath,()=>{if(route.query.edition){router.replace('/results/'
 watch(()=>props.previewData,()=>load())
 function filter(){const rows=root.value?.querySelectorAll<HTMLElement>('[data-team]');let n=0;rows?.forEach(r=>{r.hidden=!r.dataset.team!.toLowerCase().includes(query.value.trim().toLowerCase());if(!r.hidden)n++});const count=root.value?.querySelector('#team-count');if(count)count.textContent=query.value?`找到 ${n} 支队伍`:`${n} 支${demo?'示例':''}队伍`;const empty=root.value?.querySelector<HTMLElement>('#empty');if(empty)empty.hidden=n>0}
 function animate(){dispose();dispose=()=>{};const el=root.value;if(!el)return;const hero=el.querySelector<HTMLElement>('.v4-champion'),scene=el.querySelector<HTMLElement>('.v5-seal-scene'),object=el.querySelector<HTMLElement>('.v5-seal-object');if(!hero||!scene||!object)return
- let frame=0;const fine=matchMedia('(hover:hover) and (pointer:fine)');const move=(ev:PointerEvent)=>{if(!fine.matches||document.hidden||frame)return;frame=requestAnimationFrame(()=>{const r=hero.getBoundingClientRect();hero.style.setProperty('--light-x',((ev.clientX-r.left)/r.width*100)+'%');hero.style.setProperty('--light-y',((ev.clientY-r.top)/r.height*100)+'%');const s=scene.getBoundingClientRect();object.style.setProperty('--seal-rx',(7-((ev.clientY-s.top)/s.height-.5)*12)+'deg');object.style.setProperty('--seal-ry',(-13+((ev.clientX-s.left)/s.width-.5)*18)+'deg');frame=0})};const leave=()=>{object.style.removeProperty('--seal-rx');object.style.removeProperty('--seal-ry')}
- hero.addEventListener('pointermove',move,{passive:true});scene.addEventListener('pointerleave',leave)
+ const stopSeal=bindSealMotion(hero,scene,object)
  const partnerGrid=el.querySelector('.results-partners-grid')
  const firstPartner=partnerGrid?.firstElementChild
  const releaseKey=String(data.value?.release?.id||displayResult.value?.competition.id||'preview')
@@ -61,7 +63,7 @@ function animate(){dispose();dispose=()=>{};const el=root.value;if(!el)return;co
   observer.unobserve(entry.target)
  }),{threshold:.12});el.querySelectorAll('.v4-runners article,.v4-road,.v4-section-head,.v4-equipment-grid,.v4-presenting').forEach(x=>observer.observe(x))
  if(firstPartner&&revealedPartnerRelease!==releaseKey)observer.observe(firstPartner)
- dispose=()=>{cancelAnimationFrame(frame);observer.disconnect();hero.removeEventListener('pointermove',move);scene.removeEventListener('pointerleave',leave)}
+ dispose=()=>{stopSeal();observer.disconnect()}
 }
 function logoError(ev:Event){if(ev.target instanceof HTMLImageElement&&ev.target.hasAttribute('data-partner-logo'))ev.target.hidden=true}
 async function syncResultDOM(){const ticket=++syncSequence;await nextTick();if(unmounted||ticket!==syncSequence||!root.value)return;const search=root.value.querySelector<HTMLInputElement>('#search');if(search)search.value=query.value
@@ -83,7 +85,7 @@ function click(ev:MouseEvent){const b=(ev.target as HTMLElement).closest<HTMLEle
 function keys(ev:KeyboardEvent){const t=ev.target as HTMLElement;if(!t.matches('[data-award]'))return;const tabs=Array.from(root.value!.querySelectorAll<HTMLElement>('[data-award]'));let i=tabs.indexOf(t);if(ev.key==='Home')i=0;else if(ev.key==='End')i=tabs.length-1;else if(ev.key==='ArrowLeft')i=(i+tabs.length-1)%tabs.length;else if(ev.key==='ArrowRight')i=(i+1)%tabs.length;else return;ev.preventDefault();ev.stopPropagation();tabs[i]?.click()}
 async function download(){if(!data.value)return;const d=data.value
  // Build solely from the public DTO, never clone the app, cookies or administration DOM.
- const variants=awardPositions(d).map((_,i)=>render(d,i,{visualVariant:'v6',context:demo?'reference':'offline'}));let styles=css+'\n'+partnerCss
+ const variants=awardPositions(d).map((_,i)=>render(d,i,{visualVariant:'v6',context:demo?'reference':'offline'}));let styles=css+'\n'+partnerCss+'\n'+mobileCss
  styles+='\n'+await (await fetch('/redesign/assets/fonts.css')).text()
  const urls=[...new Set(Array.from(styles.matchAll(/url\(['"]?([^)'"\s]+)['"]?\)/g),m=>m[1]!))]
  const partnerLogos=new Set(resultPartners(d).map(p=>p.logo_url))

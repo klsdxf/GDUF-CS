@@ -1,0 +1,208 @@
+/* Mobile layouts for the public portal. Keep the desktop composition above 760px. */
+@media (max-width: 760px) {
+  .public-site .header {
+    min-height: 0;
+    padding: 8px 5% 0;
+    gap: 3px 8px;
+  }
+
+  .public-site .header .brand,
+  .public-site .header .watch,
+  .public-site .main-nav a { min-height: 44px; }
+  .public-site .header .watch { max-width: 52%; }
+  .public-site .main-nav { height: 44px; }
+  .public-site .main-nav a { flex: 1 1 auto; min-width: 44px; }
+  .public-site .header .brand > span:last-child { font-size: 23px; }
+
+  .public-site .hero {
+    --hero-image-height: clamp(190px, 56vw, 310px);
+    min-height: 0;
+  }
+  .public-site .hero-photo {
+    inset: 0 auto auto 0;
+    width: 100%;
+    height: var(--hero-image-height);
+    object-position: 58% 43%;
+    filter: saturate(.82) brightness(.9);
+  }
+  .public-site .hero::after {
+    background: linear-gradient(180deg, #0c141e16 0, #0c141e28 calc(var(--hero-image-height) * .55), #0c141e var(--hero-image-height));
+  }
+  .public-site .hero-copy { padding: calc(var(--hero-image-height) - 30px) 6% 24px; }
+  .public-site .hero h1 {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px .2em;
+    margin: 10px 0;
+    font-size: clamp(47px, 14vw, 92px);
+    line-height: .94;
+    letter-spacing: -.025em;
+    overflow-wrap: anywhere;
+  }
+  .public-site .hero h1 span { min-width: 0; }
+  .public-site .hero h1 span:empty,
+  .public-site .hero-scroll,
+  .public-site .hero-edition { display: none; }
+  .public-site .hero-event-name { font-size: clamp(16px, 4.6vw, 21px); }
+  .public-site .hero-detail { font-size: 12px; gap: 8px; }
+  .public-site .hero-actions { flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .public-site .hero-actions .btn { min-height: 44px; font-size: 12px; }
+
+  .public-site .ribbon-label a,
+  .public-site .text-link,
+  .public-site .table-foot a,
+  .public-site .feature-foot a,
+  .public-site .bottom-back a,
+  .public-site .date-tabs button,
+  .public-site .season-tabs button { min-height: 44px; }
+  .public-site .text-link,
+  .public-site .table-foot a,
+  .public-site .feature-foot a,
+  .public-site .bottom-back a { display: inline-flex; align-items: center; }
+
+  .public-site .ribbon-label { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; padding: 0; }
+  .public-site .ribbon-label strong { font-size: 13px; }
+  .public-site .ribbon-label a { display: inline-flex; align-items: center; margin: 0; flex-shrink: 0; }
+  .public-site .match-ribbon--empty {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+  }
+  .public-site .match-ribbon--empty .ribbon-label { display: contents; }
+  .public-site .match-ribbon--empty .ribbon-label strong { display: none; }
+  .public-site .match-ribbon--empty .ribbon-games { grid-column: 1; grid-row: 1; }
+  .public-site .match-ribbon--empty .ribbon-label a { grid-column: 2; grid-row: 1; }
+  .public-site .match-ribbon--empty .ribbon-game {
+    display: block;
+    padding: 7px 0;
+    border-top: 0;
+    margin: 0;
+  }
+
+  .public-site .section-pad { padding-block: 26px; }
+  .public-site .event-section .section-head { gap: 8px 12px; margin-bottom: 14px; }
+  .public-site .event-section .season-tabs { flex-shrink: 1; flex-wrap: wrap; }
+  .public-site .event-grid { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .public-site .event-grid .event-card--current .event-art {
+    height: clamp(174px, 52vw, 260px);
+    min-height: 0;
+  }
+  .public-site .event-card--past {
+    display: grid;
+    grid-template-columns: clamp(96px, 30vw, 152px) minmax(0, 1fr);
+    align-items: stretch;
+    min-width: 0;
+  }
+  .public-site .event-grid .event-card--past .event-art {
+    height: auto;
+    min-height: 88px;
+    padding: 0;
+  }
+  .public-site .event-card--past .poster-label,
+  .public-site .event-card--past .poster-bottom { display: none; }
+  .public-site .event-card--past .event-card-info { padding: 9px 10px; overflow-wrap: anywhere; }
+  .public-site .event-grid .poster-title { font-size: clamp(44px, 13vw, 80px); }
+
+  .public-site .crumb { padding-block: 0; gap: 10px; align-items: center; min-height: 32px; }
+  .public-site .crumb a { display: inline-flex; align-items: center; min-height: 44px; }
+  .public-site .event-crumb { display: none; }
+  .public-site .event-hero { padding: 22px 6%; min-height: 0; }
+  .public-site .event-hero-title {
+    font-size: clamp(45px, 13vw, 78px);
+    margin: 12px 0 10px;
+    overflow-wrap: anywhere;
+  }
+  .public-site .event-hero-bottom { flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+  .public-site .event-facts { flex-wrap: wrap; gap: 6px 12px; }
+  .public-site .event-header--compact { padding-block: 9px; gap: 6px 10px; }
+  .public-site .event-header--compact > div { min-width: 0; }
+  .public-site .event-header--compact .btn { min-height: 44px; }
+  .public-site .event-nav {
+    gap: 4px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(52px, 1fr));
+    padding-inline: 5%;
+    overflow: visible;
+  }
+  .public-site .event-nav a {
+    min-height: 44px;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    white-space: normal;
+    font-size: 11px;
+    line-height: 1.25;
+    padding: 4px 1px;
+  }
+  .public-site .event-body { padding-top: 18px; }
+  .public-site .event-body[data-event-section="schedule"] > .content-width > .section-head {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    margin-bottom: 8px;
+  }
+  .public-site .event-body[data-event-section="schedule"] .schedule-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    margin-bottom: 10px;
+  }
+  .public-site .event-body[data-event-section="schedule"] .schedule-top { margin: 0; }
+  .public-site .event-body[data-event-section="schedule"] .schedule-top h2 { display: none; }
+  .public-site .schedule-stage {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    margin-bottom: 8px;
+    font-size: 12px;
+  }
+  .public-site .schedule-filters .schedule-stage { margin-bottom: 0; }
+  .public-site .event-body .schedule-stage select {
+    min-width: 0;
+    min-height: 44px;
+    margin: 0;
+    font-size: 12px;
+    border: 1px solid var(--line);
+    padding: 6px;
+  }
+  .public-site .event-body[data-event-section="schedule"] .date-tabs button { padding-inline: 8px; }
+
+  .public-site .fixture {
+    grid-template-areas: "duel arrow" "meta meta" "time time";
+    min-height: 0;
+    gap: 4px 8px;
+    padding: 10px 11px;
+  }
+  .public-site .fixture-duel {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    font-size: 13px;
+  }
+  .public-site .fixture-duel > span { min-width: 0; }
+  .public-site .fixture-duel > span:last-child { text-align: right; }
+  .public-site .fixture-time { font-size: 14px; gap: 3px 7px; }
+  .public-site .fixture-time small,
+  .public-site .fixture-format,
+  .public-site .fixture-status { font-size: 12px; }
+  .public-site .fixture-meta { gap: 2px 8px; }
+  .public-site .fixture-format { min-width: 0; overflow-wrap: anywhere; }
+  .public-site .fixture-status { margin-inline-start: auto; }
+
+  .public-site .match-page .match-heading,
+  .public-site .match-page .match-content { padding-block: 16px; }
+  .public-site .match-page .match-hero { min-height: 0; padding-block: 15px; gap: 8px; }
+  .public-site .match-page .match-team .team-badge { width: 48px; height: 52px; margin-bottom: 5px; font-size: 27px; }
+  .public-site .match-page .match-team h2 { font-size: 15px; overflow-wrap: anywhere; }
+  .public-site .match-page .match-final > div { font-size: clamp(34px, 12vw, 55px); }
+  .public-site .match-page .match-summary { display: none; }
+  .public-site .match-page .map-tab { min-height: 54px; padding: 7px 8px; }
+  .public-site .match-page .map-image { min-height: 130px; }
+  .public-site .match-page .roster td { overflow-wrap: anywhere; }
+  .public-site .team-grid .team-card { min-width: 0; min-height: 0; padding: 14px 10px; overflow-wrap: anywhere; }
+  .public-site .team-grid .team-card .team-badge { width: 46px; height: 50px; font-size: 24px; margin-bottom: 6px; }
+  .public-site .team-grid .team-card p { margin-top: 6px; }
+  .public-site .news-row { grid-template-columns: 48px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding-block: 14px; }
+  .public-site .news-row h3 { font-size: 15px; }
+  .public-site .news-row time small { font-size: 12px; }
+}

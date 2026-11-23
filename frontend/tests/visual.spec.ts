@@ -5,14 +5,23 @@ import {existsSync} from 'node:fs'
 for(const width of [360,390,768,1280])test(`frozen brand artwork ${width}`,async({browser})=>{
  const context=await browser.newContext({viewport:{width,height:844},deviceScaleFactor:1}),actual=await context.newPage(),expected=await context.newPage()
  await actual.goto('/');await expect(actual.locator('.public-site')).toBeVisible();await expect(actual.locator('.gduf-home-intro')).toHaveCount(0,{timeout:6000});await expected.goto('http://127.0.0.1:4175/index.html');await expected.locator('.preview-bar').evaluate(el=>el.remove());for(const p of [actual,expected])await p.evaluate(()=>document.fonts.ready)
+ // Use the same pixel origin for both marks; the mobile header can position the same artwork differently.
+ for (const page of [actual, expected]) {
+  await page.locator('.brand-symbol').evaluate(mark => {
+   Object.assign((mark as HTMLElement).style, {
+    position: 'fixed', top: '20px', left: '20px', margin: '0', zIndex: '10',
+    backgroundColor: '#101216',
+   })
+  })
+ }
  const a=`test-results/brand-${width}.png`,b=`test-results/frozen-brand-${width}.png`
  await actual.locator('.brand-symbol').screenshot({path:a});await expected.locator('.brand-symbol').screenshot({path:b})
  const diff=JSON.parse(execFileSync(process.platform==='win32'&&existsSync('../.venv/Scripts/python.exe')?'../.venv/Scripts/python.exe':'python',['../scripts/compare_images.py',a,b],{encoding:'utf8'}));expect(diff.max_channel_delta).toBeLessThanOrEqual(4);expect(diff.pixels_over_one).toBeLessThanOrEqual(diff.width*diff.height*.001);await context.close()
 })
 const baselinePlatform=process.env.VISUAL_BASELINE_PLATFORM
 if(baselinePlatform&&baselinePlatform!=='windows-server-2025')throw new Error('Unknown visual baseline platform')
-// F-01/02/03/04/06/10: reviewed repair baselines, separate from frozen design.
-for(const width of [360,390,768,1280])for(const [name,path] of [['home','/'],['score','/matches/featured'],['schedule','/competitions/autumn/schedule'],['standings','/competitions/autumn/standings'],['teams','/competitions/autumn/teams'],['rules','/competitions/autumn/rules'],['overview','/competitions/autumn'],['news','/announcements']])test(`audit repair ${name} ${width}`,async({page})=>{
+// Desktop keeps the approved screenshots. The redesigned mobile pages have layout and interaction checks in mobile-public.spec.ts.
+for(const width of [768,1280])for(const [name,path] of [['home','/'],['score','/matches/featured'],['schedule','/competitions/autumn/schedule'],['standings','/competitions/autumn/standings'],['teams','/competitions/autumn/teams'],['rules','/competitions/autumn/rules'],['overview','/competitions/autumn'],['news','/announcements']])test(`audit repair ${name} ${width}`,async({page})=>{
  await page.setViewportSize({width,height:844});await page.goto(path);await expect(page.locator('.public-site')).toBeVisible();await expect(page.locator('.gduf-home-intro')).toHaveCount(0,{timeout:6000});await page.evaluate(()=>document.fonts.ready)
  await expect(page.locator('.public-site')).toHaveScreenshot(baselinePlatform?[baselinePlatform,`audit-${name}-${width}.png`]:`audit-${name}-${width}.png`,{animations:'disabled',maxDiffPixelRatio:.001})
 })

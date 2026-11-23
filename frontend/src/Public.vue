@@ -11,6 +11,7 @@ import {useVisitTracking} from './visitTracking'
 import HomeIntro from './home-intro/HomeIntro.vue'
 import { homeIntroEnabled, homeIntroEntry } from './home-intro/entry'
 import './redesign/reference.css'
+import './redesign/mobile.css'
 
 const route=useRoute(),router=useRouter()
 const claimHomeIntro = inject(homeIntroEntry, () => false)

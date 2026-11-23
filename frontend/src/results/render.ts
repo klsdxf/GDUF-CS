@@ -57,6 +57,7 @@ export function render(d:ResultDTO,selected=0,options:ResultRenderOptions={visua
  html('.v4-type h3',`${e(lines[0])}${lines.length>1?'<br><span>'+e(lines[1])+'</span>':''}<b>${e(c.name)}</b>`)
  if(Math.max(...lines.map(x=>x.length))>12)one('.v4-type h3').style.fontSize=`clamp(50px,${Math.max(4,10.3*12/Math.max(...lines.map(x=>x.length)))}vw,150px)`
  html('.v4-champ-meta',`<span>${e(title)}冠军${pendingResults?'待定':reference?' · 示例':''}</span><span>决赛 <b>${e(score(final).replace(' : ','—'))}</b> ${e(teamName(d,final.a_team_id===c.team_id?final.b_team_id:final.a_team_id))}</span>`)
+ if(pendingResults)one('.v4-opening').classList.add('results-pending')
  const seal=one('.v5-seal-scene')
  const sealLabel=pendingResults?'冠军纪念章示例':c.name+' 冠军纪念章'
  seal.setAttribute('aria-label',sealLabel)
@@ -97,7 +98,7 @@ export function render(d:ResultDTO,selected=0,options:ResultRenderOptions={visua
    return sponsor?[sponsor.english_name||sponsor.name]:[]
   })
   const identity=reference||pendingResults?'span':'a'
-  return `<tr data-team="${e(t.name+t.english_name)}"><td>${rank(p)}</td><td><${identity} ${identity==='a'?`href="/competitions/${e(d.competition.slug)}/teams/${e(t.team_id)}"`:''} class="table-identity"><span class="result-badge">${t.logo_url?`<img src="${e(t.logo_url)}" alt="" style="width:100%;height:100%;object-fit:contain">`:e(t.emblem_text)}</span><div><strong>${e(t.name)}</strong><small>${e(t.english_name)}</small></div></${identity}></td><td>${reward||(d.award_plan?'—':'奖品待公布')}</td><td>${providers.map(e).join(' / ')||(d.award_plan?'—':pendingResults?'待公布':'')}</td></tr>`
+  return `<tr role="row" data-team="${e(t.name+t.english_name)}"><td role="cell">${rank(p)}</td><td role="cell"><${identity} ${identity==='a'?`href="/competitions/${e(d.competition.slug)}/teams/${e(t.team_id)}"`:''} class="table-identity"><span class="result-badge">${t.logo_url?`<img src="${e(t.logo_url)}" alt="" style="width:100%;height:100%;object-fit:contain">`:e(t.emblem_text)}</span><div><strong>${e(t.name)}</strong><small>${e(t.english_name)}</small></div></${identity}></td><td role="cell"><span class="rank-mobile-label" aria-hidden="true">全队实物奖励</span>${reward||(d.award_plan?'—':'奖品待公布')}</td><td role="cell"><span class="rank-mobile-label" aria-hidden="true">奖品提供方</span>${providers.map(e).join(' / ')||(d.award_plan?'—':pendingResults?'待公布':'')}</td></tr>`
  }).join(''))
  if(!reference){text('.v4-title>div>span',d.competition.season);text('.v4-title>p','赛事排名');text('.results-table caption','完整最终名次与奖励');html('.results-foot','<span>以正式发布版本为准</span><span>'+e(title)+'</span>');text('.v4-section-head>div>span','THE FINAL RANKINGS')}
  if(pendingResults){

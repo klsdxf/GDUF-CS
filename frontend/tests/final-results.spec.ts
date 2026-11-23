@@ -29,16 +29,42 @@ for(const url of ['/results','/results/autumn'])test(`seal responds on first ent
  expect(errors).toEqual([])
 })
 
-test('seal does not apply desktop tilt to a touch pointer',async({browser})=>{
- const context=await browser.newContext({hasTouch:true,isMobile:true,viewport:{width:390,height:844}})
- const page=await context.newPage()
- await page.goto('/results');await expect(page.locator('.v5-seal-object')).toBeVisible()
- expect(await page.evaluate(()=>matchMedia('(hover:hover) and (pointer:fine)').matches)).toBeFalsy()
- await page.locator('.v5-seal-scene').dispatchEvent('pointermove',{clientX:100,clientY:100})
- await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))))
- expect(await page.locator('.v5-seal-object').evaluate(el=>el.style.getPropertyValue('--seal-rx'))).toBe('')
- await page.locator('[data-award="1"]').click();await expect(page.locator('#product-title')).toHaveText('K75 机械键盘')
- await context.close()
+test('touch drags rotate the seal, recover on release, and allow vertical scrolling', async ({ browser }) => {
+ const context = await browser.newContext({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } })
+ const page = await context.newPage()
+ try {
+  await page.goto('/results')
+  const scene = page.locator('.v5-seal-scene'), seal = page.locator('.v5-seal-object')
+  await expect(seal).toBeVisible()
+  const cdp = await context.newCDPSession(page)
+  const point = await scene.boundingBox()
+  const x = Math.round(point!.x + point!.width / 2), y = Math.round(point!.y + point!.height / 2)
+  const start = () => cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] })
+  const move = (dx: number, dy: number) => cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + dx, y: y + dy }] })
+  const end = () => cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+  const transform = () => seal.evaluate(element => getComputedStyle(element).transform)
+  const rest = await transform()
+
+  await start()
+  await move(85, 12)
+  await expect(scene).toHaveAttribute('data-seal-dragging', '')
+  await expect.poll(transform).not.toBe(rest)
+  await end()
+  await expect(scene).not.toHaveAttribute('data-seal-dragging', '')
+  await expect.poll(transform).toBe(rest)
+
+  await start()
+  await move(0, -65)
+  await move(0, -145)
+  await end()
+  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(40)
+  await expect(scene).not.toHaveAttribute('data-seal-dragging', '')
+
+  await page.locator('[data-award="1"]').click()
+  await expect(page.locator('#product-title')).toHaveText('K75 机械键盘')
+ } finally {
+  await context.close()
+ }
 })
 
 test('results navigation, search, awards, dialogs, motion and offline export',async({page})=>{

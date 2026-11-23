@@ -1,7 +1,7 @@
 // Template port of the immutable approved preview. Demo data never reaches API writes.
 // @ts-nocheck
 import sample from './sample-data.json'
-import {classifyPublicRoute,notFound,resolveLiveAction,renderMatchday} from './presentation'
+import {classifyPublicRoute,notFound,resolveLiveAction,renderMatchday,renderFixtureDuel} from './presentation'
 const {teams,members,opponents}=sample.raw_preview_data;
 let selectedDay=sample.default_state.selected_day,selectedMap=sample.default_state.selected_map,season=sample.default_state.season,eventId=sample.default_state.edition,scheduleView=sample.default_state.schedule_view;
 const icons={arrow:'<span class="arrow" aria-hidden="true">↗</span>',right:'<span class="arrow" aria-hidden="true">→</span>'};
@@ -29,8 +29,12 @@ const fixtures={
  '08':[['19:00','木棉 FIVE','MF','金融风暴','FS','2 : 1','已结束'],['20:30','金融风暴','FS','北苑竞技','NA','2 : 1','已结束']],
  '14':[['19:00','木棉 FIVE','MF','北苑竞技','NA','VS','待开始'],['20:30','金融风暴','FS','不加班战队','OT','VS','待开始']],
  '15':[]};
-function fixtureRows(){let rows=fixtures[selectedDay];return rows.length?rows.map((m,i)=>`<a class="fixture" href="#match${m[6]==='已结束'?'':i===0?'/upcoming':'/upcoming-2'}?day=${selectedDay}&index=${i}"><time class="fixture-time">${m[0]}<small>11.${selectedDay} · 北京时间</small></time><div class="fixture-duel"><span>${badge(m[2],'tiny')}${m[1]}</span><b>${m[5]}</b><span>${m[3]}${badge(m[4],'tiny alt')}</span></div><span class="fixture-meta"><b class="fixture-format">小组赛 · A 组 · BO3</b><span class="fixture-status">${m[6]}</span></span>${icons.arrow}</a>`).join(''):`<div class="empty-state"><p>11 月 15 日暂无已安排比赛</p><span>你可以切换其他日期查看赛程。</span></div>`}
-function scheduleBlock(){return `<div class="schedule-filters"><div class="schedule-top"><h2>比赛日程</h2><div class="date-tabs" aria-label="赛程日期">${['07','08','14','15'].map(d=>`<button data-day="${d}" aria-pressed="${selectedDay===d}">11.${d} <span>${d==='07'||d==='14'?'周六':'周日'}</span></button>`).join('')}</div></div></div><div id="fixture-rows" aria-live="polite">${fixtureRows()}</div><p class="schedule-note">所有时间均为北京时间 UTC+8。赛程和比分为设计演示数据。</p>`}
+function fixtureRows(){let rows=fixtures[selectedDay];return rows.length?rows.map((m,i)=>`<a class="fixture" href="#match${m[6]==='已结束'?'':i===0?'/upcoming':'/upcoming-2'}?day=${selectedDay}&index=${i}"><time class="fixture-time">${m[0]}<small>11.${selectedDay} · 北京时间</small></time>${renderFixtureDuel(
+ { name: m[1], badge: badge(m[2], 'tiny'), score: m[6] === '已结束' ? m[5].split(' : ')[0] : undefined },
+ { name: m[3], badge: badge(m[4], 'tiny alt'), score: m[6] === '已结束' ? m[5].split(' : ')[1] : undefined },
+ m[5],
+)}<span class="fixture-meta"><b class="fixture-format">小组赛 · A 组 · BO3</b><span class="fixture-status">${m[6]}</span></span>${icons.arrow}</a>`).join(''):`<div class="empty-state"><p>11 月 15 日暂无已安排比赛</p><span>你可以切换其他日期查看赛程。</span></div>`}
+function scheduleBlock(){return `<div class="schedule-filters"><div class="schedule-top"><h2>比赛日程</h2><div class="date-tabs" aria-label="赛程日期">${['07','08','14','15'].map(d=>`<button data-day="${d}" aria-pressed="${selectedDay===d}">11.${d} <span>${d==='07'||d==='14'?'周六':'周日'}</span></button>`).join('')}</div></div></div><div id="fixture-rows" class="fixture-list" aria-live="polite">${fixtureRows()}</div><p class="schedule-note">所有时间均为北京时间 UTC+8。赛程和比分为设计演示数据。</p>`}
 function scheduleBody(){return `${head('SCHEDULE','赛程与对阵',`<div class="date-tabs"><button data-view="list" aria-pressed="${scheduleView==='list'}">比赛列表</button><button data-view="bracket" aria-pressed="${scheduleView==='bracket'}">晋级对阵</button></div>`)}${scheduleView==='list'?scheduleBlock():`<div class="rules-body"><h3>小组赛 → 淘汰赛</h3><p>A、B、C、D 四组各 4 队，每组前 2 名晋级八强。</p><div class="rules-facts"><div><span>四分之一决赛</span><b>A1 vs B2</b><b>C1 vs D2</b></div><div><span>四分之一决赛</span><b>B1 vs A2</b><b>D1 vs C2</b></div><div><span>后续阶段</span><b>半决赛 → 决赛</b><span>对阵等待小组晋级确认</span></div></div><p>这是晋级结构预览，不计算或模拟真实晋级结果。</p></div>`}`}
 function standingsBody(){return `${head('GROUP STAGE','小组积分',`<span class="tag">A 组 · 示例</span>`)}<div style="max-width:850px">${standingsTable()}<div class="rules-body"><h3>积分与晋级</h3><p>本设计示例采用胜 3 分、负 0 分，小组前两名晋级。金融风暴与北苑竞技同为 3 分，本示例按两队已完成的相互战绩排序。实际名次、同分处理和晋级确认沿用后端正式结果。</p><p class="schedule-note">此预览只展示 A 组，其他分组未填充示例成绩。</p></div></div>`}
 function teamsBody(){return `${head('THE TEAMS','参赛战队',`<span class="tag">展示 8 支示例队伍</span>`)}<div class="team-grid">${teams.map((t,i)=>`<button class="team-card" data-team="${i}">${badge(t[1],i%2?'alt':'')}<h3 class="team-name">${t[0]}</h3><span class="team-sub">${t[2]}</span><p>查看当届名单 ${icons.arrow}</p></button>`).join('')}</div><p class="schedule-note">队名、标记与昵称为虚构示例；实际队标可使用已有上传功能。</p>`}

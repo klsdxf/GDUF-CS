@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {ref,computed,watch,nextTick,onUnmounted,inject} from 'vue'
+import {ref,shallowRef,computed,watch,nextTick,onUnmounted,inject} from 'vue'
 import {useRoute,useRouter} from 'vue-router'
 
 import {loadPublic,renderApi,teamDetail,article,liveBody,base} from './redesign/data'
@@ -54,7 +54,14 @@ const active=computed(()=>isResults.value?'results':displayRoute.value.path==='/
 const modalRoute=computed(()=>route.path.startsWith('/announcements/')||!!route.path.match(/^\/competitions\/[^/]+\/(teams\/[^/]+|live)$/))
 const html=computed(()=>{revision.value;if(isResults.value)return '';if(missing.value)return notFound();if(error.value)return '';const content=demo?renderDemo(displayRoute.value.path,displayRoute.value.query):renderApi(model.value,route.path,route.query,season.value,map.value);return responsiveImages(content, homeIntroEnabled && displayRoute.value.path === '/')})
 watch([liveAction,html],async()=>{await nextTick();document.querySelectorAll<HTMLButtonElement>('.public-site main [data-action="live"]').forEach(button=>{button.textContent=liveAction.value.label+' ↗';button.dataset.tone=liveAction.value.tone})},{flush:'post'})
-const bracketStages=computed(()=>model.value.stages?.filter((s:any)=>!route.query.stage||s.id===route.query.stage)||[])
+const publicMarkup = ref<HTMLElement | null>(null)
+const bracketHost = shallowRef<HTMLElement | null>(null)
+const bracketControls = shallowRef<HTMLElement | null>(null)
+const stages = computed(() => model.value.stages ?? [])
+const bracketStages = computed(() => stages.value.filter((stage: { id: string }) => !route.query.stage || stage.id === route.query.stage))
+watch([html, publicMarkup], () => {
+  bracketHost.value = publicMarkup.value?.querySelector<HTMLElement>('#public-bracket') ?? null
+}, { flush: 'post' })
 function defaultReturn(){return route.path.startsWith('/announcements/')?'/announcements':route.path.replace(/\/teams\/[^/]+$/,'/teams').replace(/\/live$/,'')}
 async function open(title:string,body:string){dialogTitle.value=title;dialogBody.value=body;await nextTick();if(!dialog.value?.open)dialog.value?.showModal()}
 async function syncDialog(){
@@ -140,7 +147,25 @@ onUnmounted(()=>{document.body.style.backgroundColor=previousBackground;sequence
 <div ref="introSurface" :inert="showHomeIntro" :class="['public-site',{'results-page v5-motion-on':isResults}]" data-theme="blue" @click="click" @keydown="keys" @change="($event.target as HTMLElement).matches('[data-stage]')&&updateQuery('stage',($event.target as HTMLSelectElement).value)">
  <header class="header"><a class="brand" href="/" aria-label="GDUF CS 首页"><span class="brand-symbol">G<span>/</span></span><span>GDUF<span class="brand-cs">CS</span><small class="brand-spacer" aria-hidden="true">&nbsp;</small></span></a><nav class="main-nav" aria-label="主导航"><a v-for="n in [['home','首页','/'],['events','赛事','/competitions'],['schedule','赛程',cbase==='/competitions'?cbase:cbase+'/schedule'],['teams','战队',cbase==='/competitions'?cbase:cbase+'/teams'],['results','最终排名','/results'],['news','公告','/announcements']]" :key="n[0]" :href="n[2]" :class="{active:active===n[0]}" :aria-current="active===n[0]?'page':undefined">{{n[1]}}</a></nav><button v-if="isResults && resultsView?.hasPublishedResults" class="watch" @click.stop="resultsView?.replay()"><span class="play-small">▷</span> 赛事回顾 <span>↗</span></button><button v-else-if="!isResults" class="watch" :data-tone="liveAction.tone" data-action="live"><span class="play-small">▷</span> {{liveAction.label}} <span>↗</span></button></header>
  <div v-if="error" class="empty-state" role="alert">{{error}} <button class="btn" @click="load">重试</button></div>
- <main :aria-busy="loading"><Results v-if="isResults" ref="resultsView" @competition="resultsCompetition=$event" @visit-ready="visits.shown" @visit-unavailable="visits.unavailable"/><div v-else-if="loading" class="empty-state">正在加载赛事信息…</div><div v-else v-html="html"></div><Teleport defer to="#public-bracket" v-if="!demo&&!loading&&!error&&route.path.endsWith('/schedule')&&route.query.view==='bracket'"><div><p v-if="!bracketStages.length" class="empty-state">暂无已发布阶段</p><section v-for="stage in bracketStages" :key="stage.id"><h2>{{stage.name}}</h2><Bracket :stage-id="stage.id" :single="stage.type==='single'" /></section></div></Teleport></main>
+ <main :aria-busy="loading"><Results v-if="isResults" ref="resultsView" @competition="resultsCompetition=$event" @visit-ready="visits.shown" @visit-unavailable="visits.unavailable"/><div v-else-if="loading" class="empty-state">正在加载赛事信息…</div><div v-else ref="publicMarkup" v-html="html"></div>
+  <Teleport v-if="bracketHost && !loading && !error" :to="bracketHost">
+   <div ref="bracketControls" class="schedule-filters bracket-filters">
+    <label v-if="stages.length" class="schedule-stage">
+     阶段
+     <select data-stage :value="route.query.stage || ''">
+      <option value="">全部阶段</option>
+      <option v-for="stage in stages" :key="stage.id" :value="stage.id">{{ stage.name }}</option>
+     </select>
+    </label>
+   </div>
+   <p v-if="!bracketStages.length" class="empty-state">暂无已发布阶段</p>
+   <section v-for="stage in bracketStages" :key="stage.id">
+    <h2>{{ stage.name }}</h2>
+    <Bracket :stage-id="stage.id" :single="stage.type === 'single'"
+      :round-controls="bracketStages.length === 1 ? bracketControls : null" />
+   </section>
+  </Teleport>
+ </main>
  <footer class="footer"><div><a class="footer-brand" href="/">GDUF CS<span> / </span></a><p aria-hidden="true">&nbsp;</p></div><div class="footer-links"><a href="/competitions">全部赛事</a><a :href="cbase==='/competitions'?cbase:cbase+'/rules'">赛事规则</a><button data-action="credits">素材说明</button><button v-if="isResults && resultsView?.hasPublishedResults" @click.stop="resultsView?.download()">{{demo?'下载此预览':'下载排名页面'}}</button><a v-else href="/admin/login">管理</a></div><div class="footer-note">{{isResults?(demo?'最终排名 · 整合设计预览':'最终排名 · 赛事公开信息'):demo?'前端概念预览 · 示例数据':'赛事公开信息'}}<br>{{isResults&&demo?'虚构示例 · 不代表真实赛事结果':demo?'不连接项目接口，不代表真实赛事安排':'以管理员正式发布信息为准'}}</div></footer>
  <dialog ref="dialog" id="dialog" aria-labelledby="dialog-label" @cancel.prevent="close" @click="backdrop"><div class="dialog-top"><span id="dialog-label">{{dialogTitle}}</span><button id="close-dialog" aria-label="关闭弹窗" @click="close">×</button></div><div id="dialog-body" v-html="dialogBody"></div></dialog>
 </div>

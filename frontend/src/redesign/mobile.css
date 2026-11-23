@@ -1,3 +1,5 @@
+.public-site .fixture-team-score { display: none; }
+
 /* Mobile layouts for the public portal. Keep the desktop composition above 760px. */
 @media (max-width: 760px) {
   .public-site .header {
@@ -169,19 +171,50 @@
   }
   .public-site .event-body[data-event-section="schedule"] .date-tabs button { padding-inline: 8px; }
 
-  .public-site .fixture {
-    grid-template-areas: "duel arrow" "meta meta" "time time";
+  .public-site .fixture-list { display: grid; gap: 12px; }
+  .public-site .fixture-list .fixture {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "duel" "time" "meta";
     min-height: 0;
-    gap: 4px 8px;
-    padding: 10px 11px;
+    gap: 4px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
   }
-  .public-site .fixture-duel {
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-    font-size: 13px;
+  .public-site .fixture-list .fixture-duel {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    font-size: 14px;
   }
-  .public-site .fixture-duel > span { min-width: 0; }
-  .public-site .fixture-duel > span:last-child { text-align: right; }
-  .public-site .fixture-time { font-size: 14px; gap: 3px 7px; }
+  .public-site .fixture-list .fixture-duel > .fixture-team {
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr) 3ch;
+    grid-template-areas: "badge name score";
+    gap: 8px;
+    align-items: center;
+    text-align: start;
+  }
+  .public-site .fixture-list .fixture-team .team-badge { grid-area: badge; }
+  .public-site .fixture-list .fixture-team-name {
+    grid-area: name;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .public-site .fixture-list .fixture-team-score {
+    display: block;
+    grid-area: score;
+    font: 700 19px/1.2 var(--display);
+    text-align: end;
+  }
+  .public-site .fixture-list .fixture-series-score,
+  .public-site .fixture-list .fixture > .arrow { display: none; }
+  .public-site .fixture-list .fixture-time {
+    font-size: 14px;
+    gap: 3px 7px;
+    margin-top: 3px;
+    padding-top: 6px;
+    border-top: 1px solid var(--line);
+  }
   .public-site .fixture-time small,
   .public-site .fixture-format,
   .public-site .fixture-status { font-size: 12px; }

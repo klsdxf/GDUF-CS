@@ -37,27 +37,44 @@ test('touch drags rotate the seal, recover on release, and allow vertical scroll
   const scene = page.locator('.v5-seal-scene'), seal = page.locator('.v5-seal-object')
   await expect(seal).toBeVisible()
   const cdp = await context.newCDPSession(page)
+  await scene.scrollIntoViewIfNeeded()
   const point = await scene.boundingBox()
   const x = Math.round(point!.x + point!.width / 2), y = Math.round(point!.y + point!.height / 2)
-  const start = () => cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] })
-  const move = (dx: number, dy: number) => cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + dx, y: y + dy }] })
-  const end = () => cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+  const hit = await page.evaluate(({ x, y }) => Boolean(document.elementFromPoint(x, y)?.closest('.v5-seal')), { x, y })
+  expect(hit).toBe(true)
+
+  const touch = (type: 'touchStart' | 'touchMove' | 'touchEnd' | 'touchCancel', dx = 0, dy = 0) =>
+   cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' || type === 'touchCancel' ? [] : [{ x: x + dx, y: y + dy }] })
   const transform = () => seal.evaluate(element => getComputedStyle(element).transform)
+  const turn = () => seal.evaluate(element => element.style.getPropertyValue('--seal-ry'))
   const rest = await transform()
 
-  await start()
-  await move(85, 12)
-  await expect(scene).toHaveAttribute('data-seal-dragging', '')
-  await expect.poll(transform).not.toBe(rest)
-  await end()
-  await expect(scene).not.toHaveAttribute('data-seal-dragging', '')
-  await expect.poll(transform).toBe(rest)
+  // Start over the SVG center, another part of the artwork, and the edge of the scene.
+  const leftEdge = Math.round(point!.x) + 8 - x
+  for (const [offset, direction] of [[0, 1], [22, -1], [leftEdge, 1]] as const) {
+   const canDrag = await page.evaluate(({ x, y }) => Boolean(document.elementFromPoint(x, y)?.closest('.v5-seal-scene')), { x: x + offset, y })
+   expect(canDrag).toBe(true)
+   await touch('touchStart', offset)
+   let angle = ''
+   for (const distance of [12, 22, 33, 44, 55, 68]) {
+    await touch('touchMove', offset + distance * direction, 2)
+    await expect(scene).toHaveAttribute('data-seal-dragging', '')
+    await expect.poll(turn).not.toBe(angle)
+    angle = await turn()
+    expect(parseFloat(angle)).toBeCloseTo(-10 + distance * direction * .35)
+   }
+   await expect.poll(transform).not.toBe(rest)
+   await touch(direction === -1 ? 'touchCancel' : 'touchEnd')
+   await expect(scene).not.toHaveAttribute('data-seal-dragging', '')
+   await expect.poll(transform).toBe(rest)
+  }
 
-  await start()
-  await move(0, -65)
-  await move(0, -145)
-  await end()
-  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(40)
+  const scroll = await page.evaluate(() => scrollY)
+  await touch('touchStart')
+  await touch('touchMove', 0, -65)
+  await touch('touchMove', 0, -145)
+  await touch('touchEnd')
+  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(scroll + 40)
   await expect(scene).not.toHaveAttribute('data-seal-dragging', '')
 
   await page.locator('[data-award="1"]').click()

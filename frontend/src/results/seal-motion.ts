@@ -79,7 +79,10 @@ export function bindSealMotion(hero: HTMLElement, scene: HTMLElement, seal: HTML
   scene.addEventListener('pointermove', move, options)
   scene.addEventListener('pointerup', release, options)
   scene.addEventListener('pointercancel', release, options)
-  scene.addEventListener('lostpointercapture', release, options)
+  scene.addEventListener('lostpointercapture', event => {
+    // Transferring implicit capture from an SVG child also fires this event.
+    if (event.target === scene) release(event)
+  }, options)
   document.addEventListener('visibilitychange', () => { if (document.hidden) finish() }, options)
 
   return () => {

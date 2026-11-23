@@ -56,7 +56,6 @@ const html=computed(()=>{revision.value;if(isResults.value)return '';if(missing.
 watch([liveAction,html],async()=>{await nextTick();document.querySelectorAll<HTMLButtonElement>('.public-site main [data-action="live"]').forEach(button=>{button.textContent=liveAction.value.label+' ↗';button.dataset.tone=liveAction.value.tone})},{flush:'post'})
 const publicMarkup = ref<HTMLElement | null>(null)
 const bracketHost = shallowRef<HTMLElement | null>(null)
-const bracketControls = shallowRef<HTMLElement | null>(null)
 const stages = computed(() => model.value.stages ?? [])
 const bracketStages = computed(() => stages.value.filter((stage: { id: string }) => !route.query.stage || stage.id === route.query.stage))
 watch([html, publicMarkup], () => {
@@ -149,7 +148,7 @@ onUnmounted(()=>{document.body.style.backgroundColor=previousBackground;sequence
  <div v-if="error" class="empty-state" role="alert">{{error}} <button class="btn" @click="load">重试</button></div>
  <main :aria-busy="loading"><Results v-if="isResults" ref="resultsView" @competition="resultsCompetition=$event" @visit-ready="visits.shown" @visit-unavailable="visits.unavailable"/><div v-else-if="loading" class="empty-state">正在加载赛事信息…</div><div v-else ref="publicMarkup" v-html="html"></div>
   <Teleport v-if="bracketHost && !loading && !error" :to="bracketHost">
-   <div ref="bracketControls" class="schedule-filters bracket-filters">
+   <div class="schedule-filters bracket-filters">
     <label v-if="stages.length" class="schedule-stage">
      阶段
      <select data-stage :value="route.query.stage || ''">
@@ -161,8 +160,7 @@ onUnmounted(()=>{document.body.style.backgroundColor=previousBackground;sequence
    <p v-if="!bracketStages.length" class="empty-state">暂无已发布阶段</p>
    <section v-for="stage in bracketStages" :key="stage.id">
     <h2>{{ stage.name }}</h2>
-    <Bracket :stage-id="stage.id" :single="stage.type === 'single'"
-      :round-controls="bracketStages.length === 1 ? bracketControls : null" />
+    <Bracket :stage-id="stage.id" :single="stage.type === 'single'" />
    </section>
   </Teleport>
  </main>

@@ -24,7 +24,7 @@ for (const width of [320, 375, 390, 430]) {
 }
 
 for (const width of [320, 375, 390, 430]) {
-  test('schedule cards and bracket controls fit at ' + width, async ({ page }) => {
+  test('schedule cards and connected bracket columns fit at ' + width, async ({ page }) => {
     await page.setViewportSize({ width, height: 667 })
     const competition = { id: 'cup', slug: 'cup', name: '校园赛', season: '2026', status: 'ongoing', competition_format: 'single' }
     const stage = { id: 'stage', name: '淘汰赛', type: 'single' }
@@ -37,12 +37,21 @@ for (const width of [320, 375, 390, 430]) {
     const second = { ...first, id: 'second', code: 'Q2' }
     const final = { ...first, id: 'final', code: 'F1', label: '决赛', round: 2, scheduled_at: '2026-11-15T11:00:00Z',
       teams: [null, null], confirmed: false, source_a: 'Q1:winner', source_b: 'Q2:winner' }
+    const bronze = { ...final, id: 'bronze', code: 'T1', label: '季军赛', bracket: 'third' }
     const extra = { ...final, id: 'extra', code: 'E1', stage_id: otherStage.id }
     await page.route('**/api/v1/**', route => {
       const path = new URL(route.request().url()).pathname
       const data = path.endsWith('/competitions') ? [competition] : path.endsWith('/cup') ? competition
         : path.endsWith('/stages') ? [stage, otherStage] : path.endsWith('/matches') ? [first, second, final, extra]
-        : path.endsWith('/stage/bracket') ? { matches: [first, second, final], edges: [{ source: first.id, target: final.id, outcome: 'winner', slot: 'a' }] }
+        : path.endsWith('/stage/bracket') ? {
+          matches: [first, second, bronze, final],
+          edges: [
+            { source: first.id, target: bronze.id, outcome: 'loser', slot: 'a' },
+            { source: second.id, target: bronze.id, outcome: 'loser', slot: 'b' },
+            { source: first.id, target: final.id, outcome: 'winner', slot: 'a' },
+            { source: second.id, target: final.id, outcome: 'winner', slot: 'b' },
+          ],
+        }
         : path.endsWith('/other/bracket') ? { matches: [extra] } : []
       return route.fulfill({ json: { data } })
     })
@@ -74,21 +83,29 @@ for (const width of [320, 375, 390, 430]) {
     await expect(fixtures.first()).toHaveAttribute('href', '/matches/final')
     await page.getByRole('button', { name: '晋级对阵' }).click()
     const controls = page.locator('.bracket-filters')
-    const picker = controls.getByRole('combobox', { name: '轮次' })
     await expect(controls.locator('select[data-stage]')).toHaveValue(stage.id)
-    await expect(picker).toBeVisible()
-    await expect(page.getByRole('heading', { name: '半决赛', exact: true })).toBeHidden()
-    const cards = page.locator('.bracket-node:visible')
-    await expect(cards).toHaveCount(2)
-    await expect(cards.first()).toContainText('胜者 → 决赛 · F1')
+    const board = page.getByRole('region', { name: /晋级对阵/ })
+    const lanes = board.locator('.bracket-round')
+    await expect(lanes.locator('h2')).toHaveText(['半决赛', '季军赛', '决赛'])
+    await expect(board.locator('.bracket-node')).toHaveCount(4)
+    const firstLane = await lanes.first().boundingBox(), secondLane = await lanes.nth(1).boundingBox()
+    const viewport = await board.boundingBox()
+    expect(firstLane!.y).toBeCloseTo(secondLane!.y)
+    expect(secondLane!.x).toBeGreaterThan(firstLane!.x + firstLane!.width)
+    expect(secondLane!.x + secondLane!.width).toBeLessThanOrEqual(viewport!.x + viewport!.width + 1)
+    const cards = lanes.first().locator('.bracket-node')
     const firstCard = await cards.first().boundingBox(), secondCard = await cards.last().boundingBox()
     expect(secondCard!.y - firstCard!.y - firstCard!.height).toBeGreaterThanOrEqual(12)
-    await picker.selectOption('决赛')
-    await expect(cards).toHaveCount(1)
-    await expect(cards.first()).toHaveAttribute('href', '/matches/final')
+    await expect(board.locator('.bracket-connections path')).toHaveCount(4)
+    await expect(board.locator('.bracket-loser-edge')).toHaveCount(2)
+    const finalCard = board.locator('a[href="/matches/final"]')
+    const finalPath = await board.locator('.bracket-connections path:not(.bracket-loser-edge)').first().getAttribute('d')
+    await board.evaluate(element => { element.scrollLeft = element.scrollWidth })
+    await expect(finalCard).toBeInViewport()
+    await expect(board.locator('.bracket-connections path:not(.bracket-loser-edge)').first()).toHaveAttribute('d', finalPath!)
     await controls.locator('select[data-stage]').selectOption(otherStage.id)
-    await expect(cards.first()).toHaveAttribute('href', '/matches/extra')
-    await expect(page.getByRole('heading', { name: '决赛', exact: true })).toBeVisible()
+    await expect(board.locator('.bracket-node')).toHaveAttribute('href', '/matches/extra')
+    await expect(board.getByRole('heading', { name: '决赛', exact: true })).toBeVisible()
     expect(await fitsViewport()).toBe(true)
 
     if (width === 430) {
@@ -96,6 +113,16 @@ for (const width of [320, 375, 390, 430]) {
       await page.goto(schedule)
       await expect(firstFixture.locator('.fixture-series-score')).toBeVisible()
       await expect(firstFixture.locator('.fixture-team-score').first()).toBeHidden()
+
+      await page.goto(schedule + '?view=bracket&stage=' + stage.id)
+      await expect(lanes.locator('h2')).toHaveText(['半决赛', '季军赛', '决赛'])
+      await expect(board.locator('.bracket-connections path')).toHaveCount(4)
+      await expect(board.locator('.bracket-loser-edge')).toHaveCount(2)
+      await expect(page.getByText('实线胜者 · 虚线败者')).toBeVisible()
+      await expect(finalCard).toBeInViewport()
+      expect(await board.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+      const desktopHeaders = await lanes.locator('h2').evaluateAll(headings => headings.map(heading => heading.getBoundingClientRect().top))
+      expect(new Set(desktopHeaders).size).toBe(1)
     }
   })
 }

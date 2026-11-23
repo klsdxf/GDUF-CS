@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {ref,computed,watch,nextTick,onUnmounted} from 'vue'
+import {ref,computed,watch,nextTick,onUnmounted,inject} from 'vue'
 import {useRoute,useRouter} from 'vue-router'
 
 import {loadPublic,renderApi,teamDetail,article,liveBody,base} from './redesign/data'
@@ -7,9 +7,26 @@ import {api} from './api'
 import {classifyPublicRoute,notFound,updatePageMeta,resolveLiveAction,escape,responsiveImages} from './redesign/presentation'
 import Bracket from './Bracket.vue'
 import Results from './Results.vue'
+import HomeIntro from './home-intro/HomeIntro.vue'
+import { homeIntroEnabled, homeIntroEntry } from './home-intro/entry'
 import './redesign/reference.css'
 
 const route=useRoute(),router=useRouter()
+const claimHomeIntro = inject(homeIntroEntry, () => false)
+const showHomeIntro = ref(claimHomeIntro() && route.path === '/')
+const introSurface = ref<HTMLElement | null>(null)
+function getIntroSurface() { return introSurface.value }
+function closeHomeIntro(restoreFocus: boolean) {
+  showHomeIntro.value = false
+  if (restoreFocus) void nextTick(() => {
+    const focusTarget = introSurface.value?.querySelector<HTMLElement>('.hero-copy h1')
+      ?? introSurface.value?.querySelector<HTMLElement>('main')
+    if (focusTarget) {
+      focusTarget.setAttribute('tabindex', '-1')
+      focusTarget.focus({ preventScroll: true })
+    }
+  })
+}
 const mode=import.meta.env.VITE_PUBLIC_DATA_MODE||'api'
 if(!['demo','api'].includes(mode))throw new Error('VITE_PUBLIC_DATA_MODE 必须为 demo 或 api')
 const previousBackground=document.body.style.backgroundColor
@@ -32,7 +49,7 @@ const cbase=computed(()=>isResults.value&&!demo?(resultsCompetition.value?base(r
 const displayRoute=computed(()=>demo&&modalRoute.value&&returnTo.value?router.resolve(returnTo.value):route)
 const active=computed(()=>isResults.value?'results':displayRoute.value.path==='/'?'home':displayRoute.value.path.includes('/schedule')?'schedule':displayRoute.value.path.includes('/teams')?'teams':displayRoute.value.path.startsWith('/announcements')?'news':'events')
 const modalRoute=computed(()=>route.path.startsWith('/announcements/')||!!route.path.match(/^\/competitions\/[^/]+\/(teams\/[^/]+|live)$/))
-const html=computed(()=>{revision.value;if(isResults.value)return '';if(missing.value)return notFound();if(error.value)return '';const content=demo?renderDemo(displayRoute.value.path,displayRoute.value.query):renderApi(model.value,route.path,route.query,season.value,map.value);return responsiveImages(content)})
+const html=computed(()=>{revision.value;if(isResults.value)return '';if(missing.value)return notFound();if(error.value)return '';const content=demo?renderDemo(displayRoute.value.path,displayRoute.value.query):renderApi(model.value,route.path,route.query,season.value,map.value);return responsiveImages(content, homeIntroEnabled && displayRoute.value.path === '/')})
 watch([liveAction,html],async()=>{await nextTick();document.querySelectorAll<HTMLButtonElement>('.public-site main [data-action="live"]').forEach(button=>{button.textContent=liveAction.value.label+' ↗';button.dataset.tone=liveAction.value.tone})},{flush:'post'})
 const bracketStages=computed(()=>model.value.stages?.filter((s:any)=>!route.query.stage||s.id===route.query.stage)||[])
 function defaultReturn(){return route.path.startsWith('/announcements/')?'/announcements':route.path.replace(/\/teams\/[^/]+$/,'/teams').replace(/\/live$/,'')}
@@ -60,7 +77,7 @@ async function loadLive(force=false){
  if(route.path.endsWith('/live'))await syncDialog()
 }
 async function load(){if(isResults.value){sequence++;loading.value=false;error.value='';missing.value=false;dialog.value?.close();return}const ticket=++sequence;error.value='';missing.value=!classifyPublicRoute(route.path,demo);liveRows.value=[];liveState.value=demo?'ready':'loading';updatePageMeta(route.path,missing.value);if(missing.value){dialog.value?.close();loading.value=false;return}if(import.meta.env.VITE_PUBLIC_DATA_MODE==='demo'&&demo){reference=await import('./redesign/demo');revision.value++;await syncDialog();return}loading.value=true;model.value={competitions:[],news:[]};try{const result=await loadPublic(route.path);if(ticket===sequence){model.value=result;void loadLive();await syncDialog()}}catch(err:any){if(ticket===sequence){missing.value=err.status===404;error.value=missing.value?'':err.message;dialog.value?.close();updatePageMeta(route.path,missing.value,missing.value?'':'服务暂不可用')}}finally{if(ticket===sequence)loading.value=false}}
-watch(()=>route.path,(_path,oldPath)=>{map.value=0;if(!route.path.endsWith('/live')&&!route.path.startsWith('/matches/'))liveMatchId.value='';transient.value=false;dialog.value?.close();load();if(!modalRoute.value&&!oldPath?.match(/^(\/announcements\/|\/competitions\/[^/]+\/(teams\/[^/]+|live)$)/))window.scrollTo({top:0})},{immediate:true})
+watch(()=>route.path,(_path,oldPath)=>{if(_path!=='/')showHomeIntro.value=false;map.value=0;if(!route.path.endsWith('/live')&&!route.path.startsWith('/matches/'))liveMatchId.value='';transient.value=false;dialog.value?.close();load();if(!modalRoute.value&&!oldPath?.match(/^(\/announcements\/|\/competitions\/[^/]+\/(teams\/[^/]+|live)$)/))window.scrollTo({top:0})},{immediate:true})
 function close(){dialog.value?.close();dialogSequence++;if(modalRoute.value){const to=returnTo.value||defaultReturn();const hadSource=!!returnTo.value;returnTo.value='';if(hadSource&&window.history.state.back===to)router.back();else router.replace(to)}else transient.value=false}
 async function live(){if(route.path.startsWith('/matches/'))liveMatchId.value=model.value.detail?.id||'';if(cbase.value==='/competitions'){transient.value=true;await open('直播与回放',liveBody([]));return}returnTo.value=route.fullPath;router.push(cbase.value+'/live')}
 function updateQuery(key:string,value:string){const q={...route.query};if(value)q[key]=value;else delete q[key];router.replace({query:q})}
@@ -88,7 +105,8 @@ document.addEventListener('visibilitychange',refresh)
 onUnmounted(()=>{document.body.style.backgroundColor=previousBackground;sequence++;dialogSequence++;clearInterval(timer);document.removeEventListener('visibilitychange',refresh)})
 </script>
 <template>
-<div :class="['public-site',{'results-page v5-motion-on':isResults}]" data-theme="blue" @click="click" @keydown="keys" @change="($event.target as HTMLElement).matches('[data-stage]')&&updateQuery('stage',($event.target as HTMLSelectElement).value)">
+<HomeIntro v-if="showHomeIntro" :get-surface="getIntroSurface" @done="closeHomeIntro" />
+<div ref="introSurface" :inert="showHomeIntro" :class="['public-site',{'results-page v5-motion-on':isResults}]" data-theme="blue" @click="click" @keydown="keys" @change="($event.target as HTMLElement).matches('[data-stage]')&&updateQuery('stage',($event.target as HTMLSelectElement).value)">
  <header class="header"><a class="brand" href="/" aria-label="GDUF CS 首页"><span class="brand-symbol">G<span>/</span></span><span>GDUF<span class="brand-cs">CS</span><small class="brand-spacer" aria-hidden="true">&nbsp;</small></span></a><nav class="main-nav" aria-label="主导航"><a v-for="n in [['home','首页','/'],['events','赛事','/competitions'],['schedule','赛程',cbase==='/competitions'?cbase:cbase+'/schedule'],['teams','战队',cbase==='/competitions'?cbase:cbase+'/teams'],['results','最终排名','/results'],['news','公告','/announcements']]" :key="n[0]" :href="n[2]" :class="{active:active===n[0]}" :aria-current="active===n[0]?'page':undefined">{{n[1]}}</a></nav><button v-if="isResults" class="watch" @click.stop="resultsView?.replay()"><span class="play-small">▷</span> 赛事回顾 <span>↗</span></button><button v-else class="watch" :data-tone="liveAction.tone" data-action="live"><span class="play-small">▷</span> {{liveAction.label}} <span>↗</span></button></header>
  <div v-if="error" class="empty-state" role="alert">{{error}} <button class="btn" @click="load">重试</button></div>
  <main :aria-busy="loading"><Results v-if="isResults" ref="resultsView" @competition="resultsCompetition=$event"/><div v-else-if="loading" class="empty-state">正在加载赛事信息…</div><div v-else v-html="html"></div><Teleport defer to="#public-bracket" v-if="!demo&&!loading&&!error&&route.path.endsWith('/schedule')&&route.query.view==='bracket'"><div><p v-if="!bracketStages.length" class="empty-state">暂无已发布阶段</p><section v-for="stage in bracketStages" :key="stage.id"><h2>{{stage.name}}</h2><Bracket :stage-id="stage.id" /></section></div></Teleport></main>

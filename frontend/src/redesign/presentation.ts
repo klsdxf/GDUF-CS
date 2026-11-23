@@ -1,3 +1,5 @@
+import { HOME_POSTER } from '../home-intro/entry'
+
 export const escape=(value:unknown)=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!))
 export function matchStatus(m:any){
  const names:Record<string,string>={unscheduled:'待安排',scheduled:'待开始',ongoing:'进行中',completed:'已结束',postponed:'已延期',cancelled:'已取消'}
@@ -37,6 +39,17 @@ export function updatePageMeta(path:string,missing=false,title=''){
  if(missing)meta('robots','noindex');else document.head.querySelector('meta[name="robots"]')?.remove()
 }
 
-export function responsiveImages(html:string){return html.replace(/<img([^>]*?)src="(\/redesign\/assets\/cs2-[123])\.jpg"([^>]*?)>/g,(_,before,src,after)=>{const hero=before.includes('hero-photo');after=after.replace(/\s(?:loading|decoding|fetchpriority)="[^"]*"/g,'');return `<img${before}src="${src}-960.webp"${after} srcset="${src}-480.webp 480w, ${src}-960.webp 960w, ${src}-1440.webp 1440w" sizes="${hero?'(max-width: 760px) 100vw, 70vw':'(max-width: 760px) 90vw, 50vw'}" ${hero?'fetchpriority="high"':'loading="lazy"'} decoding="async">`})}
+export function responsiveImages(html: string, alignHomePoster = false) {
+  return html.replace(/<img([^>]*?)src="(\/redesign\/assets\/cs2-[123])\.jpg"([^>]*?)>/g, (_, before, src, after) => {
+    const hero = before.includes('hero-photo')
+    const attributes = after.replace(/\s(?:loading|decoding|fetchpriority)="[^"]*"/g, '')
+    if (alignHomePoster && hero && src === '/redesign/assets/cs2-1') {
+      return `<img${before}src="${HOME_POSTER}"${attributes} fetchpriority="high" decoding="async">`
+    }
+    const sizes = hero ? '(max-width: 760px) 100vw, 70vw' : '(max-width: 760px) 90vw, 50vw'
+    const priority = hero ? 'fetchpriority="high"' : 'loading="lazy"'
+    return `<img${before}src="${src}-960.webp"${attributes} srcset="${src}-480.webp 480w, ${src}-960.webp 960w, ${src}-1440.webp 1440w" sizes="${sizes}" ${priority} decoding="async">`
+  })
+}
 
 export function renderMatchday(matches:any[],scheduleUrl:string,stages:any[]=[],now=new Date()){const rows=nextMatchday(matches,now);return `<section class="match-ribbon"><div class="ribbon-label"><strong>下一比赛日 · 共 ${rows.length} 场</strong><a href="${escape(scheduleUrl)}">完整赛程 →</a></div><div class="ribbon-games">${rows.map(m=>`<a class="ribbon-game" href="/matches/${escape(m.id)}"><div class="ribbon-date">${escape(new Date(m.scheduled_at).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai',hour12:false}))}</div><div class="ribbon-pair">${escape(m.teams[0]?.name)||'待定'} vs ${escape(m.teams[1]?.name)||'待定'}<br><span class="ribbon-format">${escape(stages.find(s=>s.id===m.stage_id)?.name||'比赛')} · ${escape(m.group?m.group+'组':m.code)} · BO${escape(m.best_of)} · ${escape(matchStatus(m))}</span></div>↗</a>`).join('')||`<p class="ribbon-game">${matches.some(m=>['unscheduled','scheduled'].includes(m.status)&&!dayKey(m.scheduled_at))?'开赛时间待安排':'暂无后续赛程'}</p>`}</div></section>`}
